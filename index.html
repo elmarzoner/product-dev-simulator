@@ -28,39 +28,28 @@ const { useState, useMemo, useCallback, useEffect } = React;
 // 数値が入っている場合は個別設定（上書き）
 const INITIAL_PROJECTS = [
   {
-    id:1, name:"次世代スマートフォン X1",
+    id:1, name:"モンキレンチリニューアル",
     baselineLaunchYear:2026, baselineLaunchMonth:10,
-    forecastLaunchYear:2026, forecastLaunchMonth:12,
+    forecastLaunchYear:2026, forecastLaunchMonth:10,
     tasks:[
-      {id:1,name:"コンセプト・市場調査", startOffset:-12,endOffset:-10,cost:80, costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
-      {id:2,name:"設計・仕様策定",       startOffset:-10,endOffset:-7, cost:200,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null},
-      {id:3,name:"包装材デザイン",        startOffset:-6, endOffset:-4, cost:50, costType:"lump",color:"#ec4899",fcstStartOffset:null,fcstEndOffset:null},
-      {id:4,name:"金型製作・試作",        startOffset:-5, endOffset:-2, cost:300,costType:"lump",color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null},
-      {id:5,name:"量産・検品",            startOffset:-2, endOffset:0,  cost:150,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
-      {id:6,name:"プロモーション活動",    startOffset:-1, endOffset:2,  cost:100,costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null},
+      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:0,costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
+      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:0,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null},
+      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:0,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
+      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:0,costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null},
     ],
-    salesPlan:[
-      {mo:1,rev:500},{mo:2,rev:1000},{mo:3,rev:1500},{mo:4,rev:1800},
-      {mo:5,rev:1800},{mo:6,rev:1600},{mo:7,rev:1400},{mo:8,rev:1200},
-      {mo:9,rev:1000},{mo:10,rev:900},{mo:11,rev:850},{mo:12,rev:800},
-    ],
+    salesPlan:Array.from({length:12},(_,i)=>({mo:i+1,rev:0})),
   },
   {
-    id:2, name:"スマートウォッチ Pro",
+    id:2, name:"エアコン工具P",
     baselineLaunchYear:2026, baselineLaunchMonth:6,
-    forecastLaunchYear:2026, forecastLaunchMonth:7,
+    forecastLaunchYear:2026, forecastLaunchMonth:6,
     tasks:[
-      {id:1,name:"市場調査・企画", startOffset:-8,endOffset:-6,cost:60, costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
-      {id:2,name:"デザイン設計",    startOffset:-6,endOffset:-4,cost:120,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null},
-      {id:3,name:"部品調達",        startOffset:-4,endOffset:-2,cost:200,costType:"lump",color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null},
-      {id:4,name:"量産・品質管理",  startOffset:-2,endOffset:0, cost:180,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
-      {id:5,name:"マーケティング",  startOffset:-1,endOffset:2, cost:90, costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null},
+      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:0,costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
+      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:0,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null},
+      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:0,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
+      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:0,costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null},
     ],
-    salesPlan:[
-      {mo:1,rev:300},{mo:2,rev:600},{mo:3,rev:900},{mo:4,rev:1100},
-      {mo:5,rev:1100},{mo:6,rev:1000},{mo:7,rev:900},{mo:8,rev:800},
-      {mo:9,rev:700},{mo:10,rev:650},{mo:11,rev:600},{mo:12,rev:550},
-    ],
+    salesPlan:Array.from({length:12},(_,i)=>({mo:i+1,rev:0})),
   },
 ];
 
@@ -907,7 +896,7 @@ function App() {
         {id:2,name:"開発・製造",startOffset:-4,endOffset:-1,cost:200,costType:"lump",color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null},
         {id:3,name:"販促",     startOffset:-1,endOffset:2, cost:80, costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
       ],
-      salesPlan:Array.from({length:12},(_,i)=>({mo:i+1,rev:(i+1)*200})),
+      salesPlan:Array.from({length:12},(_,i)=>({mo:i+1,rev:0})),
     }]);
     setSelectedId(id);
     setShowNewProject(false);
