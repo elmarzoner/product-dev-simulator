@@ -564,8 +564,8 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
                     <div className="flex-1 relative">
                       {bs>=0&&be>=0&&(
                         <div className="gantt-bar absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2"
-                          style={{left:pct(bs),width:pct(be-bs+1),background:hasDelay?"#374151":task.color,opacity:hasDelay?0.5:1}}>
-                          {!hasDelay&&<span className="text-white text-[10px] font-medium truncate">計画</span>}
+                          style={{left:pct(bs),width:pct(be-bs+1),background:task.color,opacity:hasDelay?0.7:1,border:hasDelay?"1px dashed rgba(255,255,255,0.5)":"none"}}>
+                          <span className="text-white text-[10px] font-medium truncate">計画</span>
                         </div>
                       )}
                     </div>
@@ -838,6 +838,7 @@ function App() {
   const [newProjectName,setNewProjectName]=useState("");
 
   useEffect(()=>{ saveProjects(projects); },[projects]);
+  useEffect(()=>{ setEditingTask(null); },[selectedId]);
 
   const project=useMemo(()=>projects.find(p=>p.id===selectedId)||projects[0],[projects,selectedId]);
 
