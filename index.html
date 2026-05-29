@@ -62,8 +62,30 @@ function addMonths(year,month,delta){
 function monthDiff(y1,m1,y2,m2){return(y2-y1)*12+(m2-m1);}
 function monthLabel(year,month){return `${year}/${String(month).padStart(2,'0')}`;}
 
+const STATUS_DEF = {
+  not_started:{label:"未着手", color:"#64748b", bg:"bg-slate-700", text:"text-slate-300"},
+  in_progress:{label:"進行中", color:"#3b82f6", bg:"bg-blue-900",  text:"text-blue-300"},
+  completed: {label:"完了",  color:"#10b981", bg:"bg-emerald-900",text:"text-emerald-300"},
+  delayed:   {label:"遅延",  color:"#ef4444", bg:"bg-red-900",   text:"text-red-300"},
+};
+
+// 既存データに progress / status を補完
+function normalizeProjects(arr){
+  return arr.map(p => ({
+    status:"active",
+    ...p,
+    tasks: p.tasks.map(t => ({progress:0, status:"not_started", ...t})),
+  }));
+}
+
+const PROJECT_STATUS = {
+  active:    {label:"アクティブ", bg:"bg-indigo-900",  text:"text-indigo-300"},
+  completed: {label:"完了",      bg:"bg-emerald-900", text:"text-emerald-300"},
+  archived:  {label:"アーカイブ", bg:"bg-slate-700",   text:"text-slate-400"},
+};
+
 function loadProjects(){
-  try{const s=localStorage.getItem('pdp3');return s?JSON.parse(s):INITIAL_PROJECTS;}catch{return INITIAL_PROJECTS;}
+  try{const s=localStorage.getItem('pdp3');return normalizeProjects(s?JSON.parse(s):INITIAL_PROJECTS);}catch{return normalizeProjects(INITIAL_PROJECTS);}
 }
 function saveProjects(p){try{localStorage.setItem('pdp3',JSON.stringify(p));}catch{}}
 
@@ -295,7 +317,6 @@ function GapTable({data,planKey,fcstKey,gapKey,labelKey="label",unit="万円",si
             <th className="text-right py-2 px-3 text-slate-400 font-semibold">計画</th>
             <th className="text-right py-2 px-3 text-slate-400 font-semibold">予測</th>
             <th className="text-right py-2 px-3 text-slate-400 font-semibold">差異</th>
-            <th className="py-2 px-3 text-slate-400 font-semibold">インパクト</th>
           </tr>
         </thead>
         <tbody>
@@ -323,13 +344,6 @@ function GapTable({data,planKey,fcstKey,gapKey,labelKey="label",unit="万円",si
                 <td className="py-2 px-3 text-right text-slate-300">{fcst>0?`${fcst.toLocaleString()}${unit}`:"—"}</td>
                 <td className={`py-2 px-3 text-right font-bold ${gap<0?"text-red-400":gap>0?"text-emerald-400":"text-slate-500"}`}>
                   {gap!==0?(gap>0?"+":"")+gap.toLocaleString()+unit:"±0"}
-                </td>
-                <td className="py-2 px-3">
-                  {gap!==0&&(
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${badgeColor}`}>
-                      {isNeg?"▼":"▲"} {badgeText}
-                    </span>
-                  )}
                 </td>
               </tr>
             );
@@ -385,6 +399,50 @@ function ymToOffset(baseYear, baseMonth, year, month) {
   return (year - baseYear) * 12 + (month - baseMonth);
 }
 
+// ─── FISCAL YEAR HELPERS (4月始まり、144期=2026年4月～2027年3月) ────────────
+const FY_BASE_PERIOD = 144;
+const FY_BASE_YEAR = 2026;
+function periodToFY(p)   { return FY_BASE_YEAR + (p - FY_BASE_PERIOD); }
+function fyToPeriod(fy)  { return FY_BASE_PERIOD + (fy - FY_BASE_YEAR); }
+function fiscalYearOfYM(y, m) { return m >= 4 ? y : y - 1; }
+function fiscalMonths(fy) {
+  const arr = [];
+  for (let i = 0; i < 12; i++) {
+    const m0 = 4 + i;
+    arr.push(m0 <= 12 ? { year: fy, month: m0 } : { year: fy + 1, month: m0 - 12 });
+  }
+  return arr;
+}
+
+// 1プロジェクトを年月キー(YYYY-MM)で集計（コスト=一括・終了月／売上=salesPlan）
+function projectMonthlyAggregate(project) {
+  const delay = monthDiff(project.baselineLaunchYear, project.baselineLaunchMonth,
+                          project.forecastLaunchYear, project.forecastLaunchMonth);
+  const map = {};
+  const bump = (y, m, key, val) => {
+    const k = `${y}-${String(m).padStart(2,'0')}`;
+    if (!map[k]) map[k] = { planCost:0, fcstCost:0, planRev:0, fcstRev:0 };
+    map[k][key] += val;
+  };
+  project.tasks.forEach(task => {
+    // 計画コスト：終了月に一括
+    const planEnd = offsetToYM(project.baselineLaunchYear, project.baselineLaunchMonth, task.endOffset);
+    bump(planEnd.year, planEnd.month, 'planCost', task.cost);
+    // 予測コスト：個別設定 or グローバル遅延
+    const isCustom = task.fcstEndOffset !== null && task.fcstEndOffset !== undefined;
+    const fcstEndOff = isCustom ? task.fcstEndOffset : task.endOffset + delay;
+    const fcstEnd = offsetToYM(project.baselineLaunchYear, project.baselineLaunchMonth, fcstEndOff);
+    bump(fcstEnd.year, fcstEnd.month, 'fcstCost', task.cost);
+  });
+  project.salesPlan.forEach(sp => {
+    const planYM = offsetToYM(project.baselineLaunchYear, project.baselineLaunchMonth, sp.mo);
+    bump(planYM.year, planYM.month, 'planRev', sp.rev);
+    const fcstYM = offsetToYM(project.forecastLaunchYear, project.forecastLaunchMonth, sp.mo);
+    bump(fcstYM.year, fcstYM.month, 'fcstRev', sp.rev);
+  });
+  return map;
+}
+
 // ─── TASK FORM ────────────────────────────────────────────────────────────────
 function YMPicker({label, year, month, onChange, accent=false}) {
   const years = [];
@@ -413,6 +471,8 @@ function TaskForm({task, baselineLaunchYear, baselineLaunchMonth, delayMonths, o
     cost:task.cost, costType:task.costType||"lump",
     fcstStartOffset:task.fcstStartOffset,
     fcstEndOffset:task.fcstEndOffset,
+    progress:task.progress??0,
+    status:task.status||"not_started",
   });
   const isCustom = f.fcstStartOffset!==null || f.fcstEndOffset!==null;
   const s=(k,v)=>setF(p=>({...p,[k]:v}));
@@ -451,6 +511,25 @@ function TaskForm({task, baselineLaunchYear, baselineLaunchMonth, delayMonths, o
           <label className="text-xs text-slate-400 mb-1 block">コスト（万円・終了月に一括計上）</label>
           <input type="number" value={f.cost} onChange={e=>s('cost',Number(e.target.value))}
             className="w-full bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"/>
+        </div>
+
+        {/* ステータス */}
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block">ステータス</label>
+          <select value={f.status} onChange={e=>s('status',e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            {Object.entries(STATUS_DEF).map(([k,v])=><option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+
+        {/* 進捗％ */}
+        <div>
+          <label className="text-xs text-slate-400 mb-1 block flex justify-between">
+            <span>進捗</span><span className="font-bold text-emerald-400">{f.progress}%</span>
+          </label>
+          <input type="range" min="0" max="100" step="5" value={f.progress}
+            onChange={e=>s('progress', Number(e.target.value))}
+            className="w-full accent-emerald-500"/>
         </div>
 
         <div className="border-t border-slate-700 pt-3">
@@ -494,6 +573,13 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
   function ci(offset){return vis.findIndex(m=>m.offset===offset);}
   function pct(n){return `${(n/total)*100}%`;}
 
+  // 本日の位置（baselineLaunch基準のoffset）
+  const today=new Date();
+  const todayOffset=monthDiff(project.baselineLaunchYear,project.baselineLaunchMonth,today.getFullYear(),today.getMonth()+1);
+  const dayOfMonth=today.getDate(); const daysInMonth=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  const todayFracIdx=ci(todayOffset)+(dayOfMonth-1)/daysInMonth;
+  const showTodayLine=todayFracIdx>=0 && todayFracIdx<=total;
+
   return(
     <div className="space-y-4 slide-in">
       {/* 発売日設定 */}
@@ -522,29 +608,35 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
         </div>
       </div>
       <div className="bg-slate-900 rounded-none border border-slate-800 overflow-hidden">
-        {/* Header */}
-        <div className="border-b border-slate-800 overflow-x-auto">
-          <div className="flex" style={{minWidth:`${Math.max(700,total*56)}px`}}>
-            <div className="w-44 shrink-0 px-4 py-3 text-xs font-semibold text-slate-400 border-r border-slate-800">タスク名</div>
-            <div className="flex flex-1">
-              {vis.map((m,i)=>{
-                const isBase=m.offset===0;
-                const isFcstDefault=m.offset===delayMonths&&delayMonths!==0;
-                return(
-                  <div key={i} className={`flex-1 py-3 text-center border-r border-slate-800/40 text-xs ${isBase?"bg-slate-700/30":isFcstDefault?"bg-indigo-950/40":""}`}>
-                    <div className={`font-semibold ${isBase?"text-white":isFcstDefault?"text-indigo-300":"text-slate-400"}`}>{m.month}月</div>
-                    <div className="text-slate-600 text-[9px]">{m.year}</div>
-                    {isBase&&<div className="text-[9px] text-slate-400">📦</div>}
-                    {isFcstDefault&&<div className="text-[9px] text-indigo-400">🚀</div>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        {/* Rows */}
+        {/* 1つのスクロール領域に統合（タスク名列はsticky） */}
         <div className="overflow-x-auto">
-          <div style={{minWidth:`${Math.max(700,total*56)}px`}}>
+          <div style={{minWidth:`${Math.max(700,total*56)}px`,position:'relative'}}>
+            {/* 本日縦線（タスク名列の176pxをスキップ） */}
+            {showTodayLine && (
+              <div className="absolute top-0 bottom-0 pointer-events-none z-10"
+                style={{left:`calc(176px + (100% - 176px) * ${todayFracIdx/total})`,width:'2px',background:'#facc15',boxShadow:'0 0 8px rgba(250,204,21,0.6)'}}>
+                <div className="absolute -top-1 -left-2 text-[9px] text-yellow-300 font-bold whitespace-nowrap">今日</div>
+              </div>
+            )}
+            {/* Header */}
+            <div className="flex border-b border-slate-800">
+              <div className="w-44 shrink-0 px-4 py-3 text-xs font-semibold text-slate-400 border-r border-slate-800 sticky left-0 bg-slate-900 z-20">タスク名</div>
+              <div className="flex flex-1">
+                {vis.map((m,i)=>{
+                  const isBase=m.offset===0;
+                  const isFcstDefault=m.offset===delayMonths&&delayMonths!==0;
+                  return(
+                    <div key={i} className={`flex-1 py-3 text-center border-r border-slate-800/40 text-xs ${isBase?"bg-slate-700/30":isFcstDefault?"bg-indigo-950/40":""}`}>
+                      <div className={`font-semibold ${isBase?"text-white":isFcstDefault?"text-indigo-300":"text-slate-400"}`}>{m.month}月</div>
+                      <div className="text-slate-600 text-[9px]">{m.year}</div>
+                      {isBase&&<div className="text-[9px] text-slate-400">📦</div>}
+                      {isFcstDefault&&<div className="text-[9px] text-indigo-400">🚀</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* Rows */}
             {project.tasks.map(task=>{
               const bs=ci(task.startOffset), be=ci(task.endOffset);
               const {fcstStart,fcstEnd,isCustom}=getFcstOffsets(task);
@@ -553,19 +645,25 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
               const barColor=isCustom?"#f59e0b":delayMonths>0?"#ef4444":"#10b981";
 
               return(
-                <div key={task.id} className="border-b border-slate-800/40">
+                <div key={task.id} className="border-b-2 border-slate-700">
                   {/* 計画バー */}
                   <div className="flex" style={{height:'40px'}}>
-                    <div className="w-44 shrink-0 px-3 flex items-center gap-2 border-r border-slate-800">
+                    <div className="w-44 shrink-0 px-3 flex items-center gap-2 border-r border-slate-800 sticky left-0 bg-slate-900 z-10">
                       <div className="w-2 h-2 rounded-full shrink-0" style={{background:task.color}}/>
                       <span className="text-xs text-slate-300 font-medium truncate">{task.name}</span>
                       {isCustom&&<span title="個別設定中"><IcoPin s={10} c="text-amber-400 shrink-0"/></span>}
                     </div>
                     <div className="flex-1 relative">
                       {bs>=0&&be>=0&&(
-                        <div className="gantt-bar absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2"
+                        <div className="gantt-bar absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 overflow-hidden"
                           style={{left:pct(bs),width:pct(be-bs+1),background:task.color,opacity:hasDelay?0.7:1,border:hasDelay?"1px dashed rgba(255,255,255,0.5)":"none"}}>
-                          <span className="text-white text-[10px] font-medium truncate">計画</span>
+                          {/* 進捗オーバーレイ */}
+                          {(task.progress||0)>0 && (
+                            <div className="absolute inset-y-0 left-0 bg-white/30" style={{width:`${task.progress}%`}}/>
+                          )}
+                          <span className="relative text-white text-[10px] font-medium truncate">
+                            計画 {(task.progress||0)>0?`(${task.progress}%)`:""}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -573,7 +671,7 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
                   {/* 予測バー */}
                   {hasDelay&&(
                     <div className="flex" style={{height:'34px'}}>
-                      <div className="w-44 shrink-0 px-3 flex items-center justify-end border-r border-slate-800">
+                      <div className="w-44 shrink-0 px-3 flex items-center justify-end border-r border-slate-800 sticky left-0 bg-slate-900 z-10">
                         {isCustom
                           ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-950 text-amber-400">個別設定</span>
                           : <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${delayMonths>0?"bg-red-950 text-red-400":"bg-emerald-950 text-emerald-400"}`}>
@@ -803,8 +901,8 @@ function SalesTab({salesData,totalLoss,delayMonths,project}) {
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold text-slate-300">月別売上差異（予測 − 計画）</h3>
             <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>機会損失</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>早期売上</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>マイナス差異</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>プラス差異</span>
             </div>
           </div>
           <p className="text-xs text-slate-500 mb-4">
@@ -828,12 +926,460 @@ function SalesTab({salesData,totalLoss,delayMonths,project}) {
   );
 }
 
+// ─── FISCAL TAB（期次サマリー・全プロジェクト合算） ────────────────────────
+function FiscalTab({projects}) {
+  // 全プロジェクトを集計
+  const allMap = useMemo(() => {
+    const m = {};
+    projects.forEach(p => {
+      const pm = projectMonthlyAggregate(p);
+      Object.entries(pm).forEach(([k, v]) => {
+        if (!m[k]) m[k] = { planCost:0, fcstCost:0, planRev:0, fcstRev:0 };
+        m[k].planCost += v.planCost;
+        m[k].fcstCost += v.fcstCost;
+        m[k].planRev  += v.planRev;
+        m[k].fcstRev  += v.fcstRev;
+      });
+    });
+    return m;
+  }, [projects]);
+
+  // 関連する全FYを抽出（データのある期 ± 余裕分を自動展開）
+  const availableFYs = useMemo(() => {
+    const set = new Set();
+    Object.keys(allMap).forEach(k => {
+      const [y, m] = k.split('-').map(Number);
+      set.add(fiscalYearOfYM(y, m));
+    });
+    set.add(FY_BASE_YEAR); // 必ず144期は含める
+    const min = Math.min(...set) - 1;
+    const max = Math.max(...set) + 3; // データの最終期+3期まで自動で見れる
+    const arr = [];
+    for (let y = min; y <= max; y++) arr.push(y);
+    return arr;
+  }, [allMap]);
+
+  const [fy, setFy] = useState(FY_BASE_YEAR);
+  const [half, setHalf] = useState("full"); // "full" | "h1"(4-9月) | "h2"(10-3月)
+  const halfLabel = half==="h1" ? "上期" : half==="h2" ? "下期" : "通期";
+
+  const monthsAll = fiscalMonths(fy);
+  const monthsFiltered = half==="h1" ? monthsAll.slice(0,6)
+                       : half==="h2" ? monthsAll.slice(6,12)
+                       : monthsAll;
+
+  const rows = useMemo(() => monthsFiltered.map(({year, month}) => {
+    const k = `${year}-${String(month).padStart(2,'0')}`;
+    const v = allMap[k] || { planCost:0, fcstCost:0, planRev:0, fcstRev:0 };
+    return {
+      label: `${year}/${String(month).padStart(2,'0')}`,
+      year, month,
+      planCost: v.planCost, fcstCost: v.fcstCost,
+      planRev: v.planRev,   fcstRev: v.fcstRev,
+      costGap: v.fcstCost - v.planCost,
+      revGap:  v.fcstRev  - v.planRev,
+    };
+  }), [allMap, fy, half]);
+
+  const tot = rows.reduce((s, r) => ({
+    planCost: s.planCost + r.planCost,
+    fcstCost: s.fcstCost + r.fcstCost,
+    planRev:  s.planRev  + r.planRev,
+    fcstRev:  s.fcstRev  + r.fcstRev,
+    costGap:  s.costGap  + r.costGap,
+    revGap:   s.revGap   + r.revGap,
+  }), {planCost:0,fcstCost:0,planRev:0,fcstRev:0,costGap:0,revGap:0});
+
+  const costGapData = rows.map(r => ({label: `${r.month}月`, gap: r.costGap}));
+  const revGapData  = rows.map(r => ({label: `${r.month}月`, gap: r.revGap}));
+  const hasCostGap  = rows.some(r => r.costGap !== 0);
+  const hasRevGap   = rows.some(r => r.revGap !== 0);
+
+  return (
+    <div className="space-y-5 slide-in">
+      {/* 期セレクター */}
+      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-5">
+        <div>
+          <h2 className="text-lg font-bold text-white">期次サマリー（全プロジェクト合算）</h2>
+          <p className="text-xs text-slate-400 mt-1">4月始まり・各月の計画 vs 予測の差異を集計</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <select value={fy} onChange={e=>setFy(Number(e.target.value))}
+            className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            {availableFYs.map(y => (
+              <option key={y} value={y}>第{fyToPeriod(y)}期（{y}年4月〜{y+1}年3月）</option>
+            ))}
+          </select>
+          <div className="flex border border-slate-600 overflow-hidden">
+            {[["full","通期"],["h1","上期"],["h2","下期"]].map(([k,l]) => (
+              <button key={k} onClick={()=>setHalf(k)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${half===k?"bg-indigo-600 text-white":"bg-slate-800 text-slate-400 hover:text-white"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* KPI */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label={`${halfLabel}累計コスト（計画）`} value={`${tot.planCost.toLocaleString()}万円`} valueClass="text-slate-200"/>
+        <StatCard label={`${halfLabel}累計コスト（予測）`} value={`${tot.fcstCost.toLocaleString()}万円`}
+          valueClass={tot.costGap>0?"text-red-400":tot.costGap<0?"text-emerald-400":"text-slate-200"}
+          sub={tot.costGap!==0?`差異 ${tot.costGap>0?"+":""}${tot.costGap.toLocaleString()}万円`:"差異なし"}/>
+        <StatCard label={`${halfLabel}累計売上（計画）`} value={`${tot.planRev.toLocaleString()}万円`} valueClass="text-emerald-300"/>
+        <StatCard label={`${halfLabel}累計売上（予測）`} value={`${tot.fcstRev.toLocaleString()}万円`}
+          valueClass={tot.revGap<0?"text-red-400":tot.revGap>0?"text-emerald-400":"text-slate-200"}
+          sub={tot.revGap!==0?`差異 ${tot.revGap>0?"+":""}${tot.revGap.toLocaleString()}万円`:"差異なし"}/>
+      </div>
+
+      {/* 月別コスト差異 */}
+      <div className="bg-slate-900 border border-slate-800 p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-slate-300">月別コスト差異（予測 − 計画）</h3>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>コスト増</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>コスト減</span>
+          </div>
+        </div>
+        {hasCostGap
+          ? <GapBarChart data={costGapData} valueKey="gap" height={200}/>
+          : <p className="text-xs text-slate-500 text-center py-12">この期の月別コスト差異はありません</p>}
+      </div>
+
+      {/* 月別売上差異 */}
+      <div className="bg-slate-900 border border-slate-800 p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-slate-300">月別売上差異（予測 − 計画）</h3>
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>マイナス差異</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>プラス差異</span>
+          </div>
+        </div>
+        {hasRevGap
+          ? <GapBarChart data={revGapData} valueKey="gap" height={200}/>
+          : <p className="text-xs text-slate-500 text-center py-12">この期の月別売上差異はありません</p>}
+      </div>
+
+      {/* 詳細テーブル */}
+      <div className="bg-slate-900 border border-slate-800 p-6">
+        <h3 className="text-sm font-semibold text-slate-300 mb-3">月別詳細</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-slate-800/60">
+              <tr className="text-slate-400">
+                <th className="px-3 py-2 text-left font-semibold">月</th>
+                <th className="px-3 py-2 text-right font-semibold">計画コスト</th>
+                <th className="px-3 py-2 text-right font-semibold">予測コスト</th>
+                <th className="px-3 py-2 text-right font-semibold">コスト差異</th>
+                <th className="px-3 py-2 text-right font-semibold">計画売上</th>
+                <th className="px-3 py-2 text-right font-semibold">予測売上</th>
+                <th className="px-3 py-2 text-right font-semibold">売上差異</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r => (
+                <tr key={r.label} className="border-t border-slate-800 hover:bg-slate-800/30">
+                  <td className="px-3 py-2 text-slate-300 font-medium">{r.label}</td>
+                  <td className="px-3 py-2 text-right text-slate-400">{r.planCost.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-slate-300">{r.fcstCost.toLocaleString()}</td>
+                  <td className={`px-3 py-2 text-right font-semibold ${r.costGap>0?"text-red-400":r.costGap<0?"text-emerald-400":"text-slate-600"}`}>
+                    {r.costGap===0?"−":`${r.costGap>0?"+":""}${r.costGap.toLocaleString()}`}
+                  </td>
+                  <td className="px-3 py-2 text-right text-slate-400">{r.planRev.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right text-slate-300">{r.fcstRev.toLocaleString()}</td>
+                  <td className={`px-3 py-2 text-right font-semibold ${r.revGap<0?"text-red-400":r.revGap>0?"text-emerald-400":"text-slate-600"}`}>
+                    {r.revGap===0?"−":`${r.revGap>0?"+":""}${r.revGap.toLocaleString()}`}
+                  </td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-slate-700 bg-slate-800/40 font-bold">
+                <td className="px-3 py-2 text-white">{halfLabel}合計</td>
+                <td className="px-3 py-2 text-right text-slate-200">{tot.planCost.toLocaleString()}</td>
+                <td className="px-3 py-2 text-right text-slate-200">{tot.fcstCost.toLocaleString()}</td>
+                <td className={`px-3 py-2 text-right ${tot.costGap>0?"text-red-400":tot.costGap<0?"text-emerald-400":"text-slate-600"}`}>
+                  {tot.costGap===0?"−":`${tot.costGap>0?"+":""}${tot.costGap.toLocaleString()}`}
+                </td>
+                <td className="px-3 py-2 text-right text-slate-200">{tot.planRev.toLocaleString()}</td>
+                <td className="px-3 py-2 text-right text-slate-200">{tot.fcstRev.toLocaleString()}</td>
+                <td className={`px-3 py-2 text-right ${tot.revGap<0?"text-red-400":tot.revGap>0?"text-emerald-400":"text-slate-600"}`}>
+                  {tot.revGap===0?"−":`${tot.revGap>0?"+":""}${tot.revGap.toLocaleString()}`}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500 mt-3">単位: 万円　／　全プロジェクトを合算</p>
+      </div>
+    </div>
+  );
+}
+
+// ─── PROJECT LIST PANEL ──────────────────────────────────────────────────────
+function ProjectListPanel({projects, selectedId, setSelectedId, setEditingProject,
+                            showNewProject, setShowNewProject, newProjectName, setNewProjectName, addProject}) {
+  const active    = projects.filter(p => (p.status||"active")==="active");
+  const completed = projects.filter(p => p.status==="completed");
+  // archived は通常非表示
+  const archived  = projects.filter(p => p.status==="archived");
+
+  const TOP_N = 3;
+  const topActive  = active.slice(0, TOP_N);
+  const restActive = active.slice(TOP_N);
+
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [showArchived,  setShowArchived]  = useState(false);
+
+  const ProjectRow = ({p, dim=false}) => (
+    <div onClick={()=>setSelectedId(p.id)}
+      className={`group flex items-center justify-between px-3 py-2 rounded-none cursor-pointer transition-colors ${p.id===selectedId?"bg-indigo-600 text-white":"text-slate-300 hover:bg-slate-800"} ${dim?"opacity-70":""}`}>
+      <span className="text-sm font-medium truncate flex-1">{p.name}</span>
+      <button onClick={e=>{e.stopPropagation(); setEditingProject(p);}}
+        className="opacity-0 group-hover:opacity-70 hover:opacity-100 ml-2 shrink-0 text-slate-300">
+        <IcoEdit s={13}/>
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="p-4 border-b border-slate-800">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">プロジェクト</span>
+        <button onClick={()=>setShowNewProject(true)} className="text-indigo-400 hover:text-indigo-300"><IcoPlus s={16}/></button>
+      </div>
+
+      {showNewProject&&(
+        <div className="mb-3 flex gap-2">
+          <input className="flex-1 bg-slate-800 border border-slate-700 rounded-none px-2 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            placeholder="プロジェクト名" value={newProjectName} onChange={e=>setNewProjectName(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&addProject()} autoFocus/>
+          <button onClick={addProject} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-none text-xs text-white font-semibold transition-colors">追加</button>
+          <button onClick={()=>setShowNewProject(false)} className="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-none text-xs text-slate-300 transition-colors">✕</button>
+        </div>
+      )}
+
+      {/* アクティブ（最大3件をクイック表示） */}
+      <div className="space-y-1">
+        {topActive.map(p => <ProjectRow key={p.id} p={p}/>)}
+        {restActive.length>0 && (
+          <div className="pt-1">
+            <select value="" onChange={e=>e.target.value && setSelectedId(Number(e.target.value))}
+              className="w-full bg-slate-800 border border-slate-700 px-2 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
+              <option value="">▼ その他のアクティブ案件（{restActive.length}件）</option>
+              {restActive.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* 完了案件（折りたたみ） */}
+      {completed.length>0 && (
+        <div className="mt-3 border-t border-slate-800 pt-2">
+          <button onClick={()=>setShowCompleted(o=>!o)}
+            className="w-full flex items-center justify-between text-[11px] text-emerald-400 hover:text-emerald-300 py-1">
+            <span>✓ 完了案件 ({completed.length})</span>
+            <span>{showCompleted?"▲":"▼"}</span>
+          </button>
+          {showCompleted && (
+            <div className="space-y-1 mt-1">
+              {completed.map(p => <ProjectRow key={p.id} p={p} dim/>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* アーカイブ（さらに折りたたみ） */}
+      {archived.length>0 && (
+        <div className="mt-2 border-t border-slate-800 pt-2">
+          <button onClick={()=>setShowArchived(o=>!o)}
+            className="w-full flex items-center justify-between text-[11px] text-slate-500 hover:text-slate-300 py-1">
+            <span>📦 アーカイブ ({archived.length})</span>
+            <span>{showArchived?"▲":"▼"}</span>
+          </button>
+          {showArchived && (
+            <div className="space-y-1 mt-1">
+              {archived.map(p => <ProjectRow key={p.id} p={p} dim/>)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {projects.length===0 && (
+        <p className="text-xs text-slate-500 text-center py-3">プロジェクトを追加してください</p>
+      )}
+    </div>
+  );
+}
+
+// ─── PROJECT EDIT MODAL ──────────────────────────────────────────────────────
+function ProjectEditModal({project, onClose, onSave, onDelete}) {
+  const [name, setName] = useState(project.name);
+  const [status, setStatus] = useState(project.status || "active");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={onClose}>
+      <div className="bg-slate-900 border border-slate-700 p-6 w-[420px] max-w-[95vw] slide-in" onClick={e=>e.stopPropagation()}>
+        <h3 className="text-base font-bold text-white mb-4">プロジェクト編集</h3>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">プロジェクト名</label>
+            <input value={name} onChange={e=>setName(e.target.value)}
+              className="w-full bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"/>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">ステータス</label>
+            <div className="grid grid-cols-3 gap-2">
+              {Object.entries(PROJECT_STATUS).map(([k,v]) => (
+                <button key={k} onClick={()=>setStatus(k)}
+                  className={`py-2 text-xs font-semibold transition-colors ${status===k?`${v.bg} ${v.text} border border-current`:"bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500"}`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              {status==="active" && "通常表示されます"}
+              {status==="completed" && "完了として下部に折りたたみ表示"}
+              {status==="archived" && "アーカイブ欄に格納（通常は非表示）"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <button onClick={()=>{onSave({name, status}); onClose();}}
+            className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-sm text-white font-semibold">保存</button>
+          <button onClick={onClose}
+            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm text-slate-300">キャンセル</button>
+        </div>
+
+        {/* 危険ゾーン */}
+        <div className="mt-6 border-t border-slate-800 pt-4">
+          <p className="text-[11px] text-red-400 font-semibold mb-2">危険ゾーン</p>
+          {!confirmDelete ? (
+            <button onClick={()=>setConfirmDelete(true)}
+              className="w-full py-2 border border-red-800 text-red-400 hover:bg-red-950 text-xs font-semibold">
+              このプロジェクトを完全削除
+            </button>
+          ) : (
+            <div className="bg-red-950/40 border border-red-800 p-3">
+              <p className="text-xs text-red-300 mb-2">本当に削除しますか？この操作は取り消せません。</p>
+              <div className="flex gap-2">
+                <button onClick={()=>{onDelete(); onClose();}}
+                  className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 text-xs text-white font-semibold">削除する</button>
+                <button onClick={()=>setConfirmDelete(false)}
+                  className="px-3 py-1.5 bg-slate-700 text-xs text-slate-300">取消</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ALL PROJECTS OVERVIEW TAB ────────────────────────────────────────────────
+function OverviewTab({projects, setSelectedId, setActiveTab}) {
+  const [filter, setFilter] = useState("active");
+  const filtered = filter==="all" ? projects : projects.filter(p => (p.status||"active")===filter);
+  const counts = {
+    active:    projects.filter(p=>(p.status||"active")==="active").length,
+    completed: projects.filter(p=>p.status==="completed").length,
+    archived:  projects.filter(p=>p.status==="archived").length,
+    all:       projects.length,
+  };
+  const rows = filtered.map(p => {
+    const delay = monthDiff(p.baselineLaunchYear,p.baselineLaunchMonth,p.forecastLaunchYear,p.forecastLaunchMonth);
+    const totalCost = p.tasks.reduce((s,t)=>s+(t.cost||0),0);
+    const totalRev  = p.salesPlan.reduce((s,r)=>s+(r.rev||0),0);
+    const taskCount = p.tasks.length;
+    const avgProgress = taskCount>0 ? Math.round(p.tasks.reduce((s,t)=>s+(t.progress||0),0)/taskCount) : 0;
+    const statusCount = p.tasks.reduce((acc,t)=>{const k=t.status||"not_started"; acc[k]=(acc[k]||0)+1; return acc;},{});
+    return {p, delay, totalCost, totalRev, taskCount, avgProgress, statusCount};
+  });
+  return (
+    <div className="space-y-5 slide-in">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-white">全プロジェクト一覧</h2>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400">表示</label>
+          <select value={filter} onChange={e=>setFilter(e.target.value)}
+            className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <option value="active">アクティブのみ ({counts.active})</option>
+            <option value="completed">完了のみ ({counts.completed})</option>
+            <option value="archived">アーカイブのみ ({counts.archived})</option>
+            <option value="all">すべて ({counts.all})</option>
+          </select>
+        </div>
+      </div>
+      {rows.length===0 && (
+        <p className="text-xs text-slate-500 text-center py-8 bg-slate-900 border border-slate-800">該当するプロジェクトがありません</p>
+      )}
+      {rows.length>0 && <div className="bg-slate-900 border border-slate-800 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-slate-800/60">
+            <tr className="text-slate-400">
+              <th className="px-3 py-3 text-left font-semibold">プロジェクト名</th>
+              <th className="px-3 py-3 text-left font-semibold">計画発売日</th>
+              <th className="px-3 py-3 text-left font-semibold">予測発売日</th>
+              <th className="px-3 py-3 text-center font-semibold">遅延</th>
+              <th className="px-3 py-3 text-center font-semibold">タスク数</th>
+              <th className="px-3 py-3 text-center font-semibold">進捗率</th>
+              <th className="px-3 py-3 text-center font-semibold">内訳</th>
+              <th className="px-3 py-3 text-right font-semibold">総コスト</th>
+              <th className="px-3 py-3 text-right font-semibold">売上計画</th>
+              <th className="px-3 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({p, delay, totalCost, totalRev, taskCount, avgProgress, statusCount}) => (
+              <tr key={p.id} className="border-t border-slate-800 hover:bg-slate-800/30">
+                <td className="px-3 py-3 text-white font-medium">{p.name}</td>
+                <td className="px-3 py-3 text-slate-300">{p.baselineLaunchYear}/{String(p.baselineLaunchMonth).padStart(2,'0')}</td>
+                <td className="px-3 py-3 text-slate-300">{p.forecastLaunchYear}/{String(p.forecastLaunchMonth).padStart(2,'0')}</td>
+                <td className={`px-3 py-3 text-center font-bold ${delay>0?"text-red-400":delay<0?"text-emerald-400":"text-slate-500"}`}>
+                  {delay===0?"−":delay>0?`+${delay}M`:`${delay}M`}
+                </td>
+                <td className="px-3 py-3 text-center text-slate-300">{taskCount}</td>
+                <td className="px-3 py-3 w-32">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-slate-700 overflow-hidden">
+                      <div className="h-full bg-emerald-500" style={{width:`${avgProgress}%`}}/>
+                    </div>
+                    <span className="text-emerald-400 font-semibold text-[11px] w-8 text-right">{avgProgress}%</span>
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-center">
+                  <div className="flex gap-1 justify-center flex-wrap">
+                    {Object.entries(STATUS_DEF).map(([k,v]) => statusCount[k]>0 && (
+                      <span key={k} className={`text-[10px] font-semibold px-1.5 py-0.5 ${v.bg} ${v.text}`}>{v.label}×{statusCount[k]}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-right text-amber-400">{totalCost.toLocaleString()}万</td>
+                <td className="px-3 py-3 text-right text-emerald-300">{totalRev.toLocaleString()}万</td>
+                <td className="px-3 py-3 text-right">
+                  <button onClick={()=>{setSelectedId(p.id); setActiveTab(0);}}
+                    className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white">開く</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>}
+      <p className="text-xs text-slate-500">単位: 万円　／　進捗率は各タスクの進捗％の平均</p>
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 function App() {
   const [projects,setProjects]=useState(loadProjects);
   const [selectedId,setSelectedId]=useState(1);
   const [activeTab,setActiveTab]=useState(0);
   const [editingTask,setEditingTask]=useState(null);
+  const [editingProject,setEditingProject]=useState(null);
   const [showNewProject,setShowNewProject]=useState(false);
   const [newProjectName,setNewProjectName]=useState("");
 
@@ -947,9 +1493,15 @@ function App() {
   }
 
   function deleteProject(id){
-    if(projects.length<=1) return;
-    setProjects(prev=>prev.filter(p=>p.id!==id));
-    if(selectedId===id) setSelectedId(projects.find(p=>p.id!==id)?.id);
+    setProjects(prev=>{
+      const next = prev.filter(p=>p.id!==id);
+      if(selectedId===id) setSelectedId(next[0]?.id);
+      return next;
+    });
+  }
+
+  function saveProjectEdit(id, patch){
+    setProjects(prev=>prev.map(p=>p.id===id?{...p,...patch}:p));
   }
 
   function saveTask(f){
@@ -960,10 +1512,18 @@ function App() {
     setEditingTask(null);
   }
 
-  const TABS=["進捗タイムライン","月別コスト推移","売上・インパクト分析"];
+  const TABS=["進捗タイムライン","月別コスト推移","売上・インパクト分析","期次サマリー","全プロジェクト一覧"];
 
   return(
     <div className="min-h-screen bg-slate-950 flex flex-col">
+      {editingProject && (
+        <ProjectEditModal
+          project={editingProject}
+          onClose={()=>setEditingProject(null)}
+          onSave={(patch)=>saveProjectEdit(editingProject.id, patch)}
+          onDelete={()=>deleteProject(editingProject.id)}
+        />
+      )}
       {/* Header */}
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center gap-4">
         <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
@@ -985,34 +1545,17 @@ function App() {
         {/* LEFT */}
         <aside className="w-80 min-w-[300px] bg-slate-900 border-r border-slate-800 flex flex-col overflow-y-auto">
           {/* Project selector */}
-          <div className="p-4 border-b border-slate-800">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">プロジェクト</span>
-              <button onClick={()=>setShowNewProject(true)} className="text-indigo-400 hover:text-indigo-300"><IcoPlus s={16}/></button>
-            </div>
-            {showNewProject&&(
-              <div className="mb-3 flex gap-2">
-                <input className="flex-1 bg-slate-800 border border-slate-700 rounded-none px-2 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                  placeholder="プロジェクト名" value={newProjectName} onChange={e=>setNewProjectName(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&addProject()} autoFocus/>
-                <button onClick={addProject} className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-none text-xs text-white font-semibold transition-colors">追加</button>
-                <button onClick={()=>setShowNewProject(false)} className="px-2 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-none text-xs text-slate-300 transition-colors">✕</button>
-              </div>
-            )}
-            <div className="space-y-1">
-              {projects.map(p=>(
-                <div key={p.id} onClick={()=>setSelectedId(p.id)}
-                  className={`flex items-center justify-between px-3 py-2 rounded-none cursor-pointer transition-colors ${p.id===selectedId?"bg-indigo-600 text-white":"text-slate-300 hover:bg-slate-800"}`}>
-                  <span className="text-sm font-medium truncate">{p.name}</span>
-                  {projects.length>1&&(
-                    <button onClick={e=>{e.stopPropagation();deleteProject(p.id);}} className="opacity-50 hover:opacity-100 hover:text-red-400 ml-2 shrink-0">
-                      <IcoTrash s={14}/>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
+          <ProjectListPanel
+            projects={projects}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            setEditingProject={setEditingProject}
+            showNewProject={showNewProject}
+            setShowNewProject={setShowNewProject}
+            newProjectName={newProjectName}
+            setNewProjectName={setNewProjectName}
+            addProject={addProject}
+          />
 
           {/* Tasks */}
           <div className="p-4 flex-1">
@@ -1049,6 +1592,15 @@ function App() {
                       計画: {planS.year}/{String(planS.month).padStart(2,'0')} 〜 {planE.year}/{String(planE.month).padStart(2,'0')}
                       {task.cost>0&&<span className="ml-2 text-amber-400 font-semibold">¥{task.cost.toLocaleString()}万</span>}
                     </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 ${STATUS_DEF[task.status||"not_started"].bg} ${STATUS_DEF[task.status||"not_started"].text}`}>
+                        {STATUS_DEF[task.status||"not_started"].label}
+                      </span>
+                      <div className="flex-1 h-1.5 bg-slate-700 overflow-hidden">
+                        <div className="h-full bg-emerald-500 transition-all" style={{width:`${task.progress||0}%`}}/>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-semibold">{task.progress||0}%</span>
+                    </div>
                     {(isCustom||(delayMonths!==0&&!isCustom))&&(
                       <div className={`mt-0.5 text-xs ${isCustom?"text-amber-400/80":"text-indigo-400/70"}`}>
                         予測: {fcstS.year}/{String(fcstS.month).padStart(2,'0')} 〜 {fcstE.year}/{String(fcstE.month).padStart(2,'0')}
@@ -1083,6 +1635,8 @@ function App() {
             {activeTab===0&&<GanttTab project={project} delayMonths={delayMonths} timelineMonths={timelineMonths} getFcstOffsets={getFcstOffsets} updateProject={updateProject}/>}
             {activeTab===1&&<CostTab costData={costData} delayMonths={delayMonths}/>}
             {activeTab===2&&<SalesTab salesData={salesData} totalLoss={totalLoss} delayMonths={delayMonths} project={project}/>}
+            {activeTab===3&&<FiscalTab projects={projects}/>}
+            {activeTab===4&&<OverviewTab projects={projects} setSelectedId={setSelectedId} setActiveTab={setActiveTab}/>}
           </div>
         </main>
       </div>
