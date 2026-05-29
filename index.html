@@ -459,9 +459,9 @@ function TaskForm({task, baselineLaunchYear, baselineLaunchMonth, delayMonths, o
               onClick={()=>toggleCustom(!isCustom)}>
               <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${isCustom?"translate-x-4":""}`}/>
             </div>
-            <span className="text-xs text-slate-300 font-medium">予測期間を個別設定する</span>
-            {!isCustom&&<span className="text-xs text-indigo-400 font-medium">（連動）</span>}
-            {isCustom&&<span className="text-xs text-amber-400 font-medium">（個別設定中）</span>}
+            <span className="text-xs text-slate-300 font-medium">グローバル遅延との連動を解除</span>
+            {!isCustom&&<span className="text-xs text-indigo-400 font-medium">（連動中）</span>}
+            {isCustom&&<span className="text-xs text-amber-400 font-medium">（解除中・個別設定）</span>}
           </label>
           {isCustom&&(
             <div className="grid grid-cols-2 gap-2 pl-2 border-l-2 border-amber-500/50">
