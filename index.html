@@ -516,7 +516,7 @@ function GanttTab({project,delayMonths,timelineMonths,getFcstOffsets,updateProje
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-white">進捗タイムライン（ガントチャート）</h2>
         <div className="flex items-center gap-4 text-xs text-slate-400">
-          <span><span className="inline-block w-4 h-2 rounded-sm bg-slate-600 mr-1.5 align-middle"/>計画</span>
+          <span><span className="inline-block w-4 h-2 rounded-sm bg-blue-500 mr-1.5 align-middle"/>計画</span>
           <span><span className={`inline-block w-4 h-2 rounded-sm mr-1.5 align-middle ${delayMonths>0?"bg-red-500":delayMonths<0?"bg-emerald-500":"bg-indigo-500"}`}/>予測（連動）</span>
           <span><span className="inline-block w-4 h-2 rounded-sm bg-amber-500 mr-1.5 align-middle"/>予測（個別設定）</span>
         </div>
