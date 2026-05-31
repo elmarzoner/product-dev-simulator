@@ -1738,6 +1738,14 @@ function App() {
           <h1 className="text-lg font-bold text-white leading-tight">新商品開発プロセス進捗シミュレーター</h1>
           <p className="text-xs text-slate-400">発売日変更が財務インパクトに与える影響をリアルタイム分析</p>
         </div>
+        {project && (
+          <div className="ml-4 pl-4 border-l border-slate-700 flex items-center gap-2">
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 ${DIVISION[project.division||"hand_tool"].bg} ${DIVISION[project.division||"hand_tool"].text}`}>
+              {DIVISION[project.division||"hand_tool"].short}
+            </span>
+            <span className="text-base font-bold text-indigo-300">{project.name}</span>
+          </div>
+        )}
         {delayMonths!==0&&(
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${delayMonths>0?"bg-red-950 text-red-400 border-red-800":"bg-emerald-950 text-emerald-400 border-emerald-800"}`}>
             <IcoAlert s={12}/>
