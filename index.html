@@ -791,10 +791,11 @@ function SalesPlanEditor({project, updateProject}) {
                 <div className="w-20 shrink-0 text-[10px] text-slate-500">{calLabel(p.mo)}</div>
                 {/* 金額入力 */}
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   value={p.rev}
-                  onChange={e => setRev(p.mo, e.target.value)}
+                  onChange={e => setRev(p.mo, e.target.value.replace(/[^0-9]/g, ''))}
                   className="flex-1 bg-slate-800 border border-slate-700 rounded-none px-2 py-1.5 text-sm text-white text-right focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
                 />
                 <span className="text-xs text-slate-500 shrink-0">万</span>
