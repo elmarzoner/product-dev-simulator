@@ -1,8 +1,10 @@
 rules_version = '2';
+// シミュレーターはFirestoreを使用していない（localStorage使用）
+// 念のため全アクセスを拒否
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /simulator/{document=**} {
-      allow read, write: if true;
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
