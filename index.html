@@ -796,9 +796,10 @@ function SalesPlanEditor({project, updateProject}) {
                   pattern="[0-9]*"
                   value={String(p.rev ?? "")}
                   onChange={e => setRev(p.mo, e.target.value.replace(/[^0-9]/g, ''))}
-                  style={{color:"#fff", background:"#1e293b", fontFamily:"system-ui, sans-serif"}}
+                  style={{color:"#ffffff", background:"#1e293b", fontFamily:"system-ui, sans-serif", WebkitTextFillColor:"#ffffff"}}
                   className="flex-1 border border-slate-700 rounded-none px-2 py-1.5 text-sm focus:outline-none focus:border-emerald-500"
                 />
+                <span className="text-xs text-emerald-400 w-12 text-right shrink-0">{p.rev}</span>
                 <span className="text-xs text-slate-500 shrink-0">万</span>
                 <button
                   onClick={() => removeMonth(p.mo)}
