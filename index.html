@@ -34,6 +34,7 @@ const { useState, useMemo, useCallback, useEffect } = React;
 const INITIAL_PROJECTS = [
   {
     id:1, name:"モンキレンチリニューアル",
+    division:"hand_tool",
     baselineLaunchYear:2026, baselineLaunchMonth:10,
     forecastLaunchYear:2026, forecastLaunchMonth:12,
     tasks:[
@@ -50,6 +51,7 @@ const INITIAL_PROJECTS = [
   },
   {
     id:2, name:"エアコン工具P",
+    division:"hand_tool",
     baselineLaunchYear:2026, baselineLaunchMonth:6,
     forecastLaunchYear:2026, forecastLaunchMonth:7,
     tasks:[
@@ -66,6 +68,7 @@ const INITIAL_PROJECTS = [
   },
   {
     id:3, name:"電気工事工具A",
+    division:"fastening",
     baselineLaunchYear:2027, baselineLaunchMonth:3,
     forecastLaunchYear:2027, forecastLaunchMonth:3,
     tasks:[
@@ -103,6 +106,7 @@ const STATUS_DEF = {
 function normalizeProjects(arr){
   return arr.map(p => ({
     status:"active",
+    division:"hand_tool",
     ...p,
     tasks: p.tasks.map(t => ({progress:0, status:"not_started", ...t})),
   }));
@@ -112,6 +116,11 @@ const PROJECT_STATUS = {
   active:    {label:"アクティブ", bg:"bg-indigo-900",  text:"text-indigo-300"},
   completed: {label:"完了",      bg:"bg-emerald-900", text:"text-emerald-300"},
   archived:  {label:"アーカイブ", bg:"bg-slate-700",   text:"text-slate-400"},
+};
+
+const DIVISION = {
+  hand_tool: {label:"ハンドツール事業部", short:"HT", bg:"bg-amber-900",   text:"text-amber-300"},
+  fastening: {label:"ファスニング事業部", short:"FT", bg:"bg-cyan-900",    text:"text-cyan-300"},
 };
 
 function loadProjects(){
@@ -960,10 +969,13 @@ function SalesTab({salesData,totalLoss,delayMonths,project}) {
 
 // ─── FISCAL TAB（期次サマリー・全プロジェクト合算） ────────────────────────
 function FiscalTab({projects}) {
-  // 全プロジェクトを集計
+  const [divFilter, setDivFilter] = useState("all"); // all | hand_tool | fastening
+  const filteredProjects = divFilter==="all" ? projects : projects.filter(p => (p.division||"hand_tool")===divFilter);
+
+  // フィルタ後のプロジェクトを集計
   const allMap = useMemo(() => {
     const m = {};
-    projects.forEach(p => {
+    filteredProjects.forEach(p => {
       const pm = projectMonthlyAggregate(p);
       Object.entries(pm).forEach(([k, v]) => {
         if (!m[k]) m[k] = { planCost:0, fcstCost:0, planRev:0, fcstRev:0 };
@@ -974,7 +986,7 @@ function FiscalTab({projects}) {
       });
     });
     return m;
-  }, [projects]);
+  }, [filteredProjects]);
 
   // 関連する全FYを抽出（データのある期 ± 余裕分を自動展開）
   const availableFYs = useMemo(() => {
@@ -1030,12 +1042,20 @@ function FiscalTab({projects}) {
   return (
     <div className="space-y-5 slide-in">
       {/* 期セレクター */}
-      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-5">
+      <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-5 flex-wrap gap-3">
         <div>
-          <h2 className="text-lg font-bold text-white">期次サマリー（全プロジェクト合算）</h2>
-          <p className="text-xs text-slate-400 mt-1">4月始まり・各月の計画 vs 予測の差異を集計</p>
+          <h2 className="text-lg font-bold text-white">期次サマリー</h2>
+          <p className="text-xs text-slate-400 mt-1">4月始まり・各月の計画 vs 予測の差異を集計（{divFilter==="all"?"全事業部":DIVISION[divFilter].label}・{filteredProjects.length}件）</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div className="flex border border-slate-600 overflow-hidden">
+            {[["all","全事業部"],["hand_tool","HT"],["fastening","FT"]].map(([k,l]) => (
+              <button key={k} onClick={()=>setDivFilter(k)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${divFilter===k?"bg-amber-600 text-white":"bg-slate-800 text-slate-400 hover:text-white"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
           <select value={fy} onChange={e=>setFy(Number(e.target.value))}
             className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             {availableFYs.map(y => (
@@ -1162,16 +1182,22 @@ function ProjectListPanel({projects, selectedId, setSelectedId, setEditingProjec
   const [showCompleted, setShowCompleted] = useState(false);
   const [showArchived,  setShowArchived]  = useState(false);
 
-  const ProjectRow = ({p, dim=false}) => (
-    <div onClick={()=>setSelectedId(p.id)}
-      className={`group flex items-center justify-between px-3 py-2 rounded-none cursor-pointer transition-colors ${p.id===selectedId?"bg-indigo-600 text-white":"text-slate-300 hover:bg-slate-800"} ${dim?"opacity-70":""}`}>
-      <span className="text-sm font-medium truncate flex-1">{p.name}</span>
-      <button onClick={e=>{e.stopPropagation(); setEditingProject(p);}}
-        className="opacity-0 group-hover:opacity-70 hover:opacity-100 ml-2 shrink-0 text-slate-300">
-        <IcoEdit s={13}/>
-      </button>
-    </div>
-  );
+  const ProjectRow = ({p, dim=false}) => {
+    const div = DIVISION[p.division||"hand_tool"];
+    return (
+      <div onClick={()=>setSelectedId(p.id)}
+        className={`group flex items-center justify-between px-3 py-2 rounded-none cursor-pointer transition-colors ${p.id===selectedId?"bg-indigo-600 text-white":"text-slate-300 hover:bg-slate-800"} ${dim?"opacity-70":""}`}>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className={`text-[9px] font-bold px-1 py-px shrink-0 ${div.bg} ${div.text}`}>{div.short}</span>
+          <span className="text-sm font-medium truncate">{p.name}</span>
+        </div>
+        <button onClick={e=>{e.stopPropagation(); setEditingProject(p);}}
+          className="opacity-0 group-hover:opacity-70 hover:opacity-100 ml-2 shrink-0 text-slate-300">
+          <IcoEdit s={13}/>
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="p-4 border-b border-slate-800">
@@ -1247,6 +1273,7 @@ function ProjectListPanel({projects, selectedId, setSelectedId, setEditingProjec
 function ProjectEditModal({project, onClose, onSave, onDelete}) {
   const [name, setName] = useState(project.name);
   const [status, setStatus] = useState(project.status || "active");
+  const [division, setDivision] = useState(project.division || "hand_tool");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
@@ -1259,6 +1286,18 @@ function ProjectEditModal({project, onClose, onSave, onDelete}) {
             <label className="text-xs text-slate-400 block mb-1">プロジェクト名</label>
             <input value={name} onChange={e=>setName(e.target.value)}
               className="w-full bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"/>
+          </div>
+
+          <div>
+            <label className="text-xs text-slate-400 block mb-1">事業部</label>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(DIVISION).map(([k,v]) => (
+                <button key={k} onClick={()=>setDivision(k)}
+                  className={`py-2 text-xs font-semibold transition-colors ${division===k?`${v.bg} ${v.text} border border-current`:"bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-500"}`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div>
@@ -1280,7 +1319,7 @@ function ProjectEditModal({project, onClose, onSave, onDelete}) {
         </div>
 
         <div className="flex gap-2 mt-5">
-          <button onClick={()=>{onSave({name, status}); onClose();}}
+          <button onClick={()=>{onSave({name, status, division}); onClose();}}
             className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-sm text-white font-semibold">保存</button>
           <button onClick={onClose}
             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-sm text-slate-300">キャンセル</button>
@@ -1314,7 +1353,9 @@ function ProjectEditModal({project, onClose, onSave, onDelete}) {
 // ─── ALL PROJECTS OVERVIEW TAB ────────────────────────────────────────────────
 function OverviewTab({projects, setSelectedId, setActiveTab}) {
   const [filter, setFilter] = useState("active");
-  const filtered = filter==="all" ? projects : projects.filter(p => (p.status||"active")===filter);
+  const [divFilter, setDivFilter] = useState("all");
+  const byStatus = filter==="all" ? projects : projects.filter(p => (p.status||"active")===filter);
+  const filtered = divFilter==="all" ? byStatus : byStatus.filter(p => (p.division||"hand_tool")===divFilter);
   const counts = {
     active:    projects.filter(p=>(p.status||"active")==="active").length,
     completed: projects.filter(p=>p.status==="completed").length,
@@ -1334,8 +1375,15 @@ function OverviewTab({projects, setSelectedId, setActiveTab}) {
     <div className="space-y-5 slide-in">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-white">全プロジェクト一覧</h2>
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400">表示</label>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex border border-slate-600 overflow-hidden">
+            {[["all","全事業部"],["hand_tool","HT"],["fastening","FT"]].map(([k,l]) => (
+              <button key={k} onClick={()=>setDivFilter(k)}
+                className={`px-3 py-2 text-xs font-medium transition-colors ${divFilter===k?"bg-amber-600 text-white":"bg-slate-800 text-slate-400 hover:text-white"}`}>
+                {l}
+              </button>
+            ))}
+          </div>
           <select value={filter} onChange={e=>setFilter(e.target.value)}
             className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             <option value="active">アクティブのみ ({counts.active})</option>
@@ -1353,6 +1401,7 @@ function OverviewTab({projects, setSelectedId, setActiveTab}) {
           <thead className="bg-slate-800/60">
             <tr className="text-slate-400">
               <th className="px-3 py-3 text-left font-semibold">プロジェクト名</th>
+              <th className="px-3 py-3 text-center font-semibold">事業部</th>
               <th className="px-3 py-3 text-left font-semibold">計画発売日</th>
               <th className="px-3 py-3 text-left font-semibold">予測発売日</th>
               <th className="px-3 py-3 text-center font-semibold">遅延</th>
@@ -1368,6 +1417,11 @@ function OverviewTab({projects, setSelectedId, setActiveTab}) {
             {rows.map(({p, delay, totalCost, totalRev, taskCount, avgProgress, statusCount}) => (
               <tr key={p.id} className="border-t border-slate-800 hover:bg-slate-800/30">
                 <td className="px-3 py-3 text-white font-medium">{p.name}</td>
+                <td className="px-3 py-3 text-center">
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 ${DIVISION[p.division||"hand_tool"].bg} ${DIVISION[p.division||"hand_tool"].text}`}>
+                    {DIVISION[p.division||"hand_tool"].short}
+                  </span>
+                </td>
                 <td className="px-3 py-3 text-slate-300">{p.baselineLaunchYear}/{String(p.baselineLaunchMonth).padStart(2,'0')}</td>
                 <td className="px-3 py-3 text-slate-300">{p.forecastLaunchYear}/{String(p.forecastLaunchMonth).padStart(2,'0')}</td>
                 <td className={`px-3 py-3 text-center font-bold ${delay>0?"text-red-400":delay<0?"text-emerald-400":"text-slate-500"}`}>
@@ -1586,7 +1640,7 @@ function App() {
     e.target.value = "";
   }
   function exportProjectsCSV() {
-    const headers = ["プロジェクト名","ステータス","計画発売日","予測発売日","遅延月数","タスク数","平均進捗率","総コスト(万円)","売上計画(万円)"];
+    const headers = ["プロジェクト名","事業部","ステータス","計画発売日","予測発売日","遅延月数","タスク数","平均進捗率","総コスト(万円)","売上計画(万円)"];
     const rows = projects.map(p => {
       const delay = monthDiff(p.baselineLaunchYear,p.baselineLaunchMonth,p.forecastLaunchYear,p.forecastLaunchMonth);
       const totalCost = p.tasks.reduce((s,t)=>s+(t.cost||0),0);
@@ -1594,6 +1648,7 @@ function App() {
       const avgProgress = p.tasks.length>0 ? Math.round(p.tasks.reduce((s,t)=>s+(t.progress||0),0)/p.tasks.length) : 0;
       return [
         p.name,
+        DIVISION[p.division||"hand_tool"].label,
         (PROJECT_STATUS[p.status||"active"]?.label) || "アクティブ",
         `${p.baselineLaunchYear}/${String(p.baselineLaunchMonth).padStart(2,'0')}`,
         `${p.forecastLaunchYear}/${String(p.forecastLaunchMonth).padStart(2,'0')}`,
