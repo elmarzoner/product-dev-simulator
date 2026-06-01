@@ -4,13 +4,12 @@ function App() {
   const [selectedId,setSelectedId]=useState(1);
   const [activeTab,setActiveTab]=useState(0);
   const [editingTask,setEditingTask]=useState(null);
-  const [editingProject,setEditingProject]=useState(null);
   const [showNewProject,setShowNewProject]=useState(false);
   const [newProjectName,setNewProjectName]=useState("");
   const [showDataMenu, setShowDataMenu] = useState(false);
 
   useEffect(()=>{ saveProjects(projects); },[projects]);
-  useEffect(()=>{ setEditingTask(null); },[selectedId]);
+  useEffect(()=>{ setEditingTask(null); setActiveTab(t=>t===5?5:t); },[selectedId]);
 
   const project=useMemo(()=>projects.find(p=>p.id===selectedId)||projects[0],[projects,selectedId]);
 
@@ -117,10 +116,6 @@ function App() {
       if(selectedId===id) setSelectedId(next[0]?.id);
       return next;
     });
-  }
-
-  function saveProjectEdit(id, patch){
-    setProjects(prev=>prev.map(p=>p.id===id?{...p,...patch}:p));
   }
 
   function saveTask(f){
@@ -234,18 +229,10 @@ function App() {
     downloadFile(`pdp_fiscal_${ts()}.csv`, toCSV(headers, rows), "text/csv;charset=utf-8");
   }
 
-  const TABS=["進捗タイムライン","月別コスト推移","売上・インパクト分析","期次サマリー","全プロジェクト一覧"];
+  const TABS=["進捗タイムライン","月別コスト推移","売上・インパクト分析","期次サマリー","全プロジェクト一覧","プロジェクト設定"];
 
   return(
     <div className="min-h-screen bg-slate-950 flex flex-col">
-      {editingProject && (
-        <ProjectEditModal
-          project={editingProject}
-          onClose={()=>setEditingProject(null)}
-          onSave={(patch)=>saveProjectEdit(editingProject.id, patch)}
-          onDelete={()=>deleteProject(editingProject.id)}
-        />
-      )}
       <header className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center gap-4">
         <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
           <IcoTrend s={16} c="text-white"/>
@@ -304,72 +291,23 @@ function App() {
             projects={projects}
             selectedId={selectedId}
             setSelectedId={setSelectedId}
-            setEditingProject={setEditingProject}
+            setActiveTab={setActiveTab}
             showNewProject={showNewProject}
             setShowNewProject={setShowNewProject}
             newProjectName={newProjectName}
             setNewProjectName={setNewProjectName}
             addProject={addProject}
           />
-          <div className="p-4 flex-1">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">開発タスク</span>
-              <button onClick={()=>setEditingTask({id:"new",name:"",startOffset:-6,endOffset:-1,cost:0,costType:"lump",fcstStartOffset:null,fcstEndOffset:null})}
-                className="text-indigo-400 hover:text-indigo-300"><IcoPlus s={16}/></button>
-            </div>
-            {editingTask&&<TaskForm task={editingTask}
-              baselineLaunchYear={project.baselineLaunchYear}
-              baselineLaunchMonth={project.baselineLaunchMonth}
-              delayMonths={delayMonths} onSave={saveTask} onCancel={()=>setEditingTask(null)}/>}
-            <div className="space-y-2">
-              {project.tasks.map(task=>{
-                const {fcstStart,fcstEnd,isCustom}=getFcstOffsets(task);
-                const planS=offsetToYM(project.baselineLaunchYear,project.baselineLaunchMonth,task.startOffset);
-                const planE=offsetToYM(project.baselineLaunchYear,project.baselineLaunchMonth,task.endOffset);
-                const fcstS=offsetToYM(project.baselineLaunchYear,project.baselineLaunchMonth,fcstStart);
-                const fcstE=offsetToYM(project.baselineLaunchYear,project.baselineLaunchMonth,fcstEnd);
-                return(
-                  <div key={task.id} className={`p-3 border ${isCustom?"bg-amber-950/20 border-amber-700/50":"bg-slate-800 border-slate-700"}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:task.color}}/>
-                        <span className="text-sm text-white font-medium truncate">{task.name}</span>
-                        {isCustom&&<IcoPin s={10} c="text-amber-400 shrink-0"/>}
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <button onClick={()=>setEditingTask({...task})} className="text-slate-500 hover:text-indigo-400 transition-colors"><IcoEdit s={13}/></button>
-                        <button onClick={()=>updateProject({tasks:project.tasks.filter(t=>t.id!==task.id)})} className="text-slate-500 hover:text-red-400 transition-colors"><IcoTrash s={13}/></button>
-                      </div>
-                    </div>
-                    <div className="mt-1.5 text-xs text-slate-400">
-                      計画: {planS.year}/{String(planS.month).padStart(2,'0')} 〜 {planE.year}/{String(planE.month).padStart(2,'0')}
-                      {task.cost>0&&<span className="ml-2 text-amber-400 font-semibold">¥{task.cost.toLocaleString()}万</span>}
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 ${STATUS_DEF[task.status||"not_started"].bg} ${STATUS_DEF[task.status||"not_started"].text}`}>
-                        {STATUS_DEF[task.status||"not_started"].label}
-                      </span>
-                      <div className="flex-1 h-1.5 bg-slate-700 overflow-hidden">
-                        <div className="h-full bg-emerald-500 transition-all" style={{width:`${task.progress||0}%`}}/>
-                      </div>
-                      <span className="text-[10px] text-emerald-400 font-semibold">{task.progress||0}%</span>
-                    </div>
-                    {(isCustom||(delayMonths!==0&&!isCustom))&&(
-                      <div className={`mt-0.5 text-xs ${isCustom?"text-amber-400/80":"text-indigo-400/70"}`}>
-                        予測: {fcstS.year}/{String(fcstS.month).padStart(2,'0')} 〜 {fcstE.year}/{String(fcstE.month).padStart(2,'0')}
-                        {isCustom&&<span className="ml-1 text-amber-500">📌</span>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="p-4 flex-1 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
               <MiniStat label="総開発コスト" value={`${project.tasks.reduce((s,t)=>s+t.cost,0).toLocaleString()}万円`}/>
               <MiniStat label="機会損失（累計）" value={totalLoss>0?`-${totalLoss.toLocaleString()}万円`:"なし"} valueClass={totalLoss>0?"text-red-400":"text-emerald-400"}/>
             </div>
+            <button onClick={()=>setActiveTab(5)}
+              className="w-full py-2.5 border border-dashed border-indigo-700 text-indigo-400 hover:bg-indigo-950/40 text-xs font-semibold transition-colors">
+              ✎ タスク・売上・プロジェクト設定を編集
+            </button>
           </div>
-          <SalesPlanEditor project={project} updateProject={updateProject}/>
         </aside>
 
         <main className="flex-1 flex flex-col overflow-hidden">
@@ -387,6 +325,11 @@ function App() {
             {activeTab===2&&<SalesTab salesData={salesData} totalLoss={totalLoss} delayMonths={delayMonths} project={project}/>}
             {activeTab===3&&<FiscalTab projects={projects}/>}
             {activeTab===4&&<OverviewTab projects={projects} setSelectedId={setSelectedId} setActiveTab={setActiveTab}/>}
+            {activeTab===5&&<SettingsTab
+              project={project} updateProject={updateProject}
+              deleteProject={()=>deleteProject(project.id)}
+              editingTask={editingTask} setEditingTask={setEditingTask} saveTask={saveTask}
+              getFcstOffsets={getFcstOffsets} delayMonths={delayMonths}/>}
           </div>
         </main>
       </div>
