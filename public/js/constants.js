@@ -15,10 +15,10 @@ const INITIAL_PROJECTS = [
     baselineLaunchYear:2026, baselineLaunchMonth:10,
     forecastLaunchYear:2026, forecastLaunchMonth:12,
     tasks:[
-      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:200,costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
-      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:300,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:70, status:"in_progress"},
-      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:400,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
-      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:100,costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:200,color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
+      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:300,color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:70, status:"in_progress"},
+      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:400,color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:100,color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
     ],
     salesPlan:[
       {mo:1,rev:100},{mo:2,rev:170},{mo:3,rev:200},{mo:4,rev:200},
@@ -32,10 +32,10 @@ const INITIAL_PROJECTS = [
     baselineLaunchYear:2026, baselineLaunchMonth:6,
     forecastLaunchYear:2026, forecastLaunchMonth:7,
     tasks:[
-      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:150,costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
-      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:280,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
-      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:350,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:40, status:"in_progress"},
-      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:80, costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:20, status:"in_progress"},
+      {id:1,name:"企画・調査",    startOffset:-6,endOffset:-4,cost:150,color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
+      {id:2,name:"開発・設計",    startOffset:-4,endOffset:-2,cost:280,color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:100,status:"completed"},
+      {id:3,name:"量産・検品",    startOffset:-2,endOffset:0, cost:350,color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:40, status:"in_progress"},
+      {id:4,name:"プロモーション",startOffset:-1,endOffset:2, cost:80, color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:20, status:"in_progress"},
     ],
     salesPlan:[
       {mo:1,rev:130},{mo:2,rev:230},{mo:3,rev:300},{mo:4,rev:330},
@@ -49,11 +49,11 @@ const INITIAL_PROJECTS = [
     baselineLaunchYear:2027, baselineLaunchMonth:3,
     forecastLaunchYear:2027, forecastLaunchMonth:3,
     tasks:[
-      {id:1,name:"企画・調査",    startOffset:-8,endOffset:-6,cost:120,costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:50, status:"in_progress"},
-      {id:2,name:"開発・設計",    startOffset:-6,endOffset:-3,cost:350,costType:"lump",color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
-      {id:3,name:"金型・試作",    startOffset:-4,endOffset:-2,cost:220,costType:"lump",color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
-      {id:4,name:"量産・検品",    startOffset:-2,endOffset:0, cost:480,costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
-      {id:5,name:"プロモーション",startOffset:-1,endOffset:2, cost:120,costType:"lump",color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:1,name:"企画・調査",    startOffset:-8,endOffset:-6,cost:120,color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null,progress:50, status:"in_progress"},
+      {id:2,name:"開発・設計",    startOffset:-6,endOffset:-3,cost:350,color:"#8b5cf6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:3,name:"金型・試作",    startOffset:-4,endOffset:-2,cost:220,color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:4,name:"量産・検品",    startOffset:-2,endOffset:0, cost:480,color:"#10b981",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
+      {id:5,name:"プロモーション",startOffset:-1,endOffset:2, cost:120,color:"#3b82f6",fcstStartOffset:null,fcstEndOffset:null,progress:0,  status:"not_started"},
     ],
     salesPlan:[
       {mo:1,rev:170},{mo:2,rev:300},{mo:3,rev:400},{mo:4,rev:430},
@@ -86,7 +86,6 @@ const DIVISION = {
 // ─── FISCAL YEAR HELPERS (4月始まり、144期=2026年4月～2027年3月) ────────────
 const FY_BASE_PERIOD = 144;
 const FY_BASE_YEAR   = 2026;
-function periodToFY(p)        { return FY_BASE_YEAR + (p - FY_BASE_PERIOD); }
 function fyToPeriod(fy)       { return FY_BASE_PERIOD + (fy - FY_BASE_YEAR); }
 function fiscalYearOfYM(y, m) { return m >= 4 ? y : y - 1; }
 function fiscalMonths(fy) {
@@ -104,7 +103,6 @@ function addMonths(year, month, delta) {
   return { year: d.getFullYear(), month: d.getMonth() + 1 };
 }
 function monthDiff(y1, m1, y2, m2) { return (y2 - y1) * 12 + (m2 - m1); }
-function monthLabel(year, month)    { return `${year}/${String(month).padStart(2,'0')}`; }
 
 // ─── DATE HELPERS ─────────────────────────────────────────────────────────────
 function offsetToYM(baseYear, baseMonth, offset) {

@@ -75,7 +75,7 @@ function App() {
     const arr=[];
     for(let o=minO;o<=maxO;o++){
       const b=addMonths(project.baselineLaunchYear,project.baselineLaunchMonth,o);
-      arr.push({offset:o,...b,label:monthLabel(b.year,b.month)});
+      arr.push({offset:o,...b});
     }
     return arr;
   },[project,getFcstOffsets]);
@@ -88,9 +88,9 @@ function App() {
       baselineLaunchYear:2027,baselineLaunchMonth:4,
       forecastLaunchYear:2027,forecastLaunchMonth:4,
       tasks:[
-        {id:1,name:"企画・調査",startOffset:-6,endOffset:-4,cost:50, costType:"lump",color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
-        {id:2,name:"開発・製造",startOffset:-4,endOffset:-1,cost:200,costType:"lump",color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null},
-        {id:3,name:"販促",     startOffset:-1,endOffset:2, cost:80, costType:"lump",color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
+        {id:1,name:"企画・調査",startOffset:-6,endOffset:-4,cost:50, color:"#6366f1",fcstStartOffset:null,fcstEndOffset:null},
+        {id:2,name:"開発・製造",startOffset:-4,endOffset:-1,cost:200,color:"#f59e0b",fcstStartOffset:null,fcstEndOffset:null},
+        {id:3,name:"販促",     startOffset:-1,endOffset:2, cost:80, color:"#10b981",fcstStartOffset:null,fcstEndOffset:null},
       ],
       salesPlan:Array.from({length:12},(_,i)=>({mo:i+1,rev:0})),
     }]);

@@ -380,7 +380,7 @@ function SettingsTab({project, updateProject, deleteProject,
       <div className="bg-slate-900 border border-slate-800 p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-white">開発タスク</h2>
-          <button onClick={()=>setEditingTask({id:"new",name:"",startOffset:-6,endOffset:-1,cost:0,costType:"lump",fcstStartOffset:null,fcstEndOffset:null})}
+          <button onClick={()=>setEditingTask({id:"new",name:"",startOffset:-6,endOffset:-1,cost:0,fcstStartOffset:null,fcstEndOffset:null})}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-semibold transition-colors">
             <IcoPlus s={13}/> タスクを追加
           </button>

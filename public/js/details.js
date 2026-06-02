@@ -60,8 +60,8 @@ function FiscalTab({projects}) {
     costGap:  s.costGap  + r.costGap,  revGap:   s.revGap   + r.revGap,
   }), {planCost:0,fcstCost:0,planRev:0,fcstRev:0,costGap:0,revGap:0});
 
-  const costGapData = rows.map(r => ({label: `${r.month}月`, gap: r.costGap}));
-  const revGapData  = rows.map(r => ({label: `${r.month}月`, gap: r.revGap}));
+  const costGapData = rows.map(r => ({label: `${r.month}月`, gap: r.costGap, plan: r.planCost, forecast: r.fcstCost}));
+  const revGapData  = rows.map(r => ({label: `${r.month}月`, gap: r.revGap,  plan: r.planRev,  forecast: r.fcstRev}));
   const hasCostGap  = rows.some(r => r.costGap !== 0);
   const hasRevGap   = rows.some(r => r.revGap !== 0);
 

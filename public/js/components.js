@@ -67,9 +67,9 @@ function MiniStat({label,value,valueClass="text-white"}) {
   );
 }
 
-function StatCard({label,value,sub,valueClass="text-white",highlight=false}) {
+function StatCard({label,value,sub,valueClass="text-white"}) {
   return(
-    <div className={`rounded-none border p-5 ${highlight?"border-red-800/60 bg-red-950/20":"bg-slate-900 border-slate-800"}`}>
+    <div className="rounded-none border p-5 bg-slate-900 border-slate-800">
       <p className="text-xs text-slate-400 mb-1">{label}</p>
       <p className={`text-xl font-bold ${valueClass}`}>{value}</p>
       {sub&&<p className="text-xs text-slate-500 mt-1">{sub}</p>}
@@ -120,7 +120,7 @@ function TaskForm({task, baselineLaunchYear, baselineLaunchMonth, delayMonths, o
   const [f,setF]=useState({
     name:task.name,
     startOffset:task.startOffset, endOffset:task.endOffset,
-    cost:task.cost, costType:task.costType||"lump",
+    cost:task.cost,
     fcstStartOffset:task.fcstStartOffset,
     fcstEndOffset:task.fcstEndOffset,
     progress:task.progress??0,
