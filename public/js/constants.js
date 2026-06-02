@@ -1,4 +1,11 @@
-const { useState, useMemo, useCallback, useEffect } = React;
+const { useState, useMemo, useCallback, useEffect, useRef } = React;
+
+// ─── 認証（簡易・テスト用） ────────────────────────────────────────────────────
+// ※ クライアント側のみの簡易ゲート。本格運用時は Firebase Auth へ移行すること。
+const APP_PASSWORD = 'lobster1888b';
+const AUTH_KEY = 'pdp_auth';
+function isAuthed()  { try { return sessionStorage.getItem(AUTH_KEY) === '1'; } catch { return false; } }
+function setAuthed() { try { sessionStorage.setItem(AUTH_KEY, '1'); } catch {} }
 
 // ─── INITIAL DATA ─────────────────────────────────────────────────────────────
 const INITIAL_PROJECTS = [
@@ -125,6 +132,49 @@ function loadProjects() {
 }
 function saveProjects(p) {
   try { localStorage.setItem('pdp3', JSON.stringify(p)); } catch {}
+}
+
+// ─── CLOUD SYNC (Firestore) ───────────────────────────────────────────────────
+// 全プロジェクトを 1 ドキュメント simulator_data/main に保存する。
+// localStorage は即時キャッシュ（オフライン用）、Firestore は共有の正本。
+const CLOUD_COL = 'simulator_data';
+const CLOUD_DOC = 'main';
+
+// 同期状態を React 側へ通知する（'saving' | 'saved' | 'error' | 'offline'）
+function emitCloudStatus(status) {
+  try { window.dispatchEvent(new CustomEvent('pdp-cloud', { detail: status })); } catch {}
+}
+
+async function loadProjectsFromCloud() {
+  if (!window.db) { emitCloudStatus('offline'); return null; }
+  try {
+    const snap = await window.db.collection(CLOUD_COL).doc(CLOUD_DOC).get();
+    if (snap.exists) {
+      const data = snap.data();
+      if (Array.isArray(data.projects) && data.projects.length) {
+        emitCloudStatus('saved');
+        return normalizeProjects(data.projects);
+      }
+    }
+    return null; // クラウドに未保存（初回）
+  } catch (err) {
+    console.warn('[firebase] クラウド読込に失敗', err);
+    emitCloudStatus('error');
+    return null;
+  }
+}
+
+let _cloudSaveTimer = null;
+function saveProjectsToCloud(projects) {
+  if (!window.db) { emitCloudStatus('offline'); return; }
+  emitCloudStatus('saving');
+  clearTimeout(_cloudSaveTimer);
+  _cloudSaveTimer = setTimeout(() => {
+    window.db.collection(CLOUD_COL).doc(CLOUD_DOC)
+      .set({ projects, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+      .then(() => emitCloudStatus('saved'))
+      .catch(err => { console.warn('[firebase] クラウド保存に失敗', err); emitCloudStatus('error'); });
+  }, 1200); // 連続入力をまとめて書き込む（デバウンス）
 }
 
 // ─── ICONS ────────────────────────────────────────────────────────────────────

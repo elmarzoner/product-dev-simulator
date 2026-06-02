@@ -1,8 +1,18 @@
 rules_version = '2';
-// シミュレーターはFirestoreを使用していない（localStorage使用）
-// 念のため全アクセスを拒否
+// 注意: パスワードゲートはクライアント側UIのみ（テスト用）。
+// 本格運用時は Firebase Auth へ移行し request.auth != null に変更を推奨。
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // シミュレーターの全プロジェクトを格納する単一ドキュメント（simulator_data/main）
+    match /simulator_data/{docId} {
+      allow read: if true;
+      // projects 配列を含む書き込みのみ許可
+      allow create, update: if request.resource.data.keys().hasAny(['projects']);
+      allow delete: if false;  // 誤削除防止のため削除は禁止
+    }
+
+    // 上記以外のコレクションへのアクセスはすべて拒否
     match /{document=**} {
       allow read, write: if false;
     }

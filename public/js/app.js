@@ -7,8 +7,42 @@ function App() {
   const [showNewProject,setShowNewProject]=useState(false);
   const [newProjectName,setNewProjectName]=useState("");
   const [showDataMenu, setShowDataMenu] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState('init');
 
-  useEffect(()=>{ saveProjects(projects); },[projects]);
+  // クラウド同期ステータスの購読
+  useEffect(()=>{
+    const h = e => setCloudStatus(e.detail);
+    window.addEventListener('pdp-cloud', h);
+    return ()=> window.removeEventListener('pdp-cloud', h);
+  },[]);
+
+  // 初回シード用に最新の projects を保持
+  const projectsRef = useRef(projects);
+  useEffect(()=>{ projectsRef.current = projects; });
+
+  // 起動時：クラウドに保存済みデータがあれば置き換え、無ければ現在のローカルデータでシード
+  const cloudReadyRef = useRef(false);
+  useEffect(()=>{
+    let cancelled = false;
+    (async ()=>{
+      const cloud = await loadProjectsFromCloud();
+      if (cancelled) return;
+      if (cloud) {
+        setProjects(cloud);
+        setSelectedId(cloud[0].id);
+      } else {
+        saveProjectsToCloud(projectsRef.current);
+      }
+      cloudReadyRef.current = true; // 以降の変更はクラウドへ反映
+    })();
+    return ()=>{ cancelled = true; };
+  },[]);
+
+  // 変更時：localStorage は即時、クラウドはデバウンス保存（初回読込完了後のみ）
+  useEffect(()=>{
+    saveProjects(projects);
+    if (cloudReadyRef.current) saveProjectsToCloud(projects);
+  },[projects]);
   useEffect(()=>{ setEditingTask(null); setActiveTab(t=>t===3?3:t); },[selectedId]);
 
   const project=useMemo(()=>projects.find(p=>p.id===selectedId)||projects[0],[projects,selectedId]);
@@ -210,7 +244,9 @@ function App() {
             {delayMonths>0?`${delayMonths}ヶ月遅延中`:`${Math.abs(delayMonths)}ヶ月前倒し`}
           </div>
         )}
-        <div className="ml-auto relative">
+        <div className="ml-auto flex items-center gap-2">
+        <CloudStatus status={cloudStatus}/>
+        <div className="relative">
           <button onClick={()=>setShowDataMenu(o=>!o)}
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 font-semibold transition-colors">
             📁 データ ▼
@@ -237,6 +273,7 @@ function App() {
               </div>
             </>
           )}
+        </div>
         </div>
       </header>
 
@@ -287,4 +324,11 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+// ─── ROOT（ログインゲート） ───────────────────────────────────────────────────
+function Root() {
+  const [authed, setAuthedState] = useState(isAuthed);
+  if (!authed) return <Gate onAuth={()=>setAuthedState(true)}/>;
+  return <App/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
