@@ -1,7 +1,11 @@
 // ─── FISCAL TAB ───────────────────────────────────────────────────────────────
 function FiscalTab({projects}) {
   const [divFilter, setDivFilter] = useState("all");
-  const filteredProjects = divFilter==="all" ? projects : projects.filter(p => (p.division||"hand_tool")===divFilter);
+  const [projFilter, setProjFilter] = useState("all"); // "all"=合算 / それ以外=project.id
+  const selectedProject = projFilter!=="all" ? projects.find(p => String(p.id)===String(projFilter)) : null;
+  const filteredProjects = selectedProject
+    ? [selectedProject]
+    : (divFilter==="all" ? projects : projects.filter(p => (p.division||"hand_tool")===divFilter));
 
   const allMap = useMemo(() => {
     const m = {};
@@ -66,10 +70,18 @@ function FiscalTab({projects}) {
       <div className="flex items-center justify-between bg-slate-900 border border-slate-800 p-5 flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-bold text-white">期次サマリー</h2>
-          <p className="text-xs text-slate-400 mt-1">4月始まり・各月の計画 vs 予測の差異を集計（{divFilter==="all"?"全事業部":DIVISION[divFilter].label}・{filteredProjects.length}件）</p>
+          <p className="text-xs text-slate-400 mt-1">4月始まり・各月の計画 vs 予測の差異を集計（{selectedProject ? `${selectedProject.name}（単体）` : `${divFilter==="all"?"全事業部":DIVISION[divFilter].label}・${filteredProjects.length}件`}）</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <div className="flex border border-slate-600 overflow-hidden">
+          <select value={projFilter} onChange={e=>setProjFilter(e.target.value)}
+            className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <option value="all">全プロジェクト合算</option>
+            {projects.map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <div className={`flex border border-slate-600 overflow-hidden ${projFilter!=="all"?"opacity-40 pointer-events-none":""}`}
+            title={projFilter!=="all"?"プロジェクト個別表示中は無効":undefined}>
             {[["all","全事業部"],["hand_tool","HT"],["fastening","FT"]].map(([k,l]) => (
               <button key={k} onClick={()=>setDivFilter(k)}
                 className={`px-3 py-2 text-xs font-medium transition-colors ${divFilter===k?"bg-amber-600 text-white":"bg-slate-800 text-slate-400 hover:text-white"}`}>
