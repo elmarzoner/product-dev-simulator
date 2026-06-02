@@ -46,51 +46,6 @@ function App() {
     return arr;
   },[project,getFcstOffsets]);
 
-  const costData=useMemo(()=>{
-    const map={};
-    timelineMonths.forEach(m=>{ map[m.offset]={label:m.label,baseline:0,forecast:0}; });
-    project.tasks.forEach(task=>{
-      const {fcstStart,fcstEnd}=getFcstOffsets(task);
-      const durB=task.endOffset-task.startOffset+1;
-      const monthlyB=task.costType==="spread"?task.cost/durB:0;
-      for(let o=task.startOffset;o<=task.endOffset;o++){
-        const val=task.costType==="lump"?(o===task.endOffset?task.cost:0):monthlyB;
-        if(map[o]) map[o].baseline+=val;
-      }
-      const durF=fcstEnd-fcstStart+1;
-      const monthlyF=task.costType==="spread"?task.cost/Math.max(1,durF):0;
-      for(let o=fcstStart;o<=fcstEnd;o++){
-        const val=task.costType==="lump"?(o===fcstEnd?task.cost:0):monthlyF;
-        if(map[o]) map[o].forecast+=val;
-      }
-    });
-    return timelineMonths.map(m=>({
-      label:m.label, offset:m.offset,
-      baseline:Math.round(map[m.offset]?.baseline||0),
-      forecast:Math.round(map[m.offset]?.forecast||0),
-    }));
-  },[project,timelineMonths,getFcstOffsets]);
-
-  const salesData=useMemo(()=>{
-    const sm={};
-    project.salesPlan.forEach(s=>{sm[s.mo]=s.rev;});
-    let cumBase=0,cumFcst=0;
-    return timelineMonths.map(m=>{
-      const br=m.offset>=1?(sm[m.offset]||0):0;
-      const fr=(m.offset-delayMonths)>=1?(sm[m.offset-delayMonths]||0):0;
-      cumBase+=br; cumFcst+=fr;
-      return {label:m.label,offset:m.offset,baseRev:br,fcstRev:fr,loss:br-fr,
-              cumBase,cumForecast:cumFcst,cumLoss:cumBase-cumFcst};
-    });
-  },[project,timelineMonths,delayMonths]);
-
-  const totalLoss=useMemo(()=>{
-    const now={year:new Date().getFullYear(),month:new Date().getMonth()+1};
-    const todayOff=monthDiff(project.baselineLaunchYear,project.baselineLaunchMonth,now.year,now.month);
-    const row=salesData.find(d=>d.offset===todayOff)||salesData[salesData.length-1];
-    return row?.cumLoss||0;
-  },[salesData,project]);
-
   function addProject(){
     if(!newProjectName.trim()) return;
     const id=Math.max(...projects.map(p=>p.id))+1;
@@ -299,10 +254,7 @@ function App() {
             addProject={addProject}
           />
           <div className="p-4 flex-1 flex flex-col gap-3">
-            <div className="grid grid-cols-2 gap-2">
-              <MiniStat label="総開発コスト" value={`${project.tasks.reduce((s,t)=>s+t.cost,0).toLocaleString()}万円`}/>
-              <MiniStat label="機会損失（累計）" value={totalLoss>0?`-${totalLoss.toLocaleString()}万円`:"なし"} valueClass={totalLoss>0?"text-red-400":"text-emerald-400"}/>
-            </div>
+            <MiniStat label="総開発コスト" value={`${project.tasks.reduce((s,t)=>s+t.cost,0).toLocaleString()}万円`}/>
             <button onClick={()=>setActiveTab(3)}
               className="w-full py-2.5 border border-dashed border-indigo-700 text-indigo-400 hover:bg-indigo-950/40 text-xs font-semibold transition-colors">
               ✎ タスク・売上・プロジェクト設定を編集
