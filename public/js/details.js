@@ -56,9 +56,6 @@ function FiscalTab({projects}) {
     costGap:  s.costGap  + r.costGap,  revGap:   s.revGap   + r.revGap,
   }), {planCost:0,fcstCost:0,planRev:0,fcstRev:0,costGap:0,revGap:0});
 
-  // 利益インパクト（予測 − 計画）＝ 売上差異 − コスト差異。発売日のズレで各期に移動した分。
-  const profitImpact = tot.revGap - tot.costGap;
-
   const costGapData = rows.map(r => ({label: `${r.month}月`, gap: r.costGap}));
   const revGapData  = rows.map(r => ({label: `${r.month}月`, gap: r.revGap}));
   const hasCostGap  = rows.some(r => r.costGap !== 0);
@@ -97,21 +94,21 @@ function FiscalTab({projects}) {
         </div>
       </div>
 
-      <div className={`border p-5 ${profitImpact<0?"border-red-800/60 bg-red-950/20":profitImpact>0?"border-emerald-800/60 bg-emerald-950/20":"border-slate-800 bg-slate-900"}`}>
-        <div className="flex items-end justify-between flex-wrap gap-3">
-          <div>
-            <p className="text-xs text-slate-400 mb-1">{halfLabel}の利益インパクト（予測 − 計画）</p>
-            <p className={`text-3xl font-bold leading-none ${profitImpact<0?"text-red-400":profitImpact>0?"text-emerald-400":"text-slate-200"}`}>
-              {profitImpact>0?"+":""}{profitImpact.toLocaleString()}<span className="text-base font-semibold ml-1">万円</span>
-            </p>
-          </div>
-          <div className="text-[11px] text-slate-500 text-right leading-relaxed">
-            <div>売上差異 <span className={tot.revGap>=0?"text-emerald-400":"text-red-400"}>{tot.revGap>0?"+":""}{tot.revGap.toLocaleString()}</span>
-              {" "}− コスト差異 <span className={tot.costGap>0?"text-red-400":"text-emerald-400"}>{tot.costGap>0?"+":""}{tot.costGap.toLocaleString()}</span></div>
-            <div className="mt-1">※ 発売日のズレで各期に売上・コストが移動した結果。商品トータルでは増減しません</div>
-          </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className={`border p-5 ${tot.costGap>0?"border-red-800/60 bg-red-950/20":tot.costGap<0?"border-emerald-800/60 bg-emerald-950/20":"border-slate-800 bg-slate-900"}`}>
+          <p className="text-xs text-slate-400 mb-1">{halfLabel}のコスト差異（予測 − 計画）</p>
+          <p className={`text-3xl font-bold leading-none ${tot.costGap>0?"text-red-400":tot.costGap<0?"text-emerald-400":"text-slate-200"}`}>
+            {tot.costGap>0?"+":""}{tot.costGap.toLocaleString()}<span className="text-base font-semibold ml-1">万円</span>
+          </p>
+        </div>
+        <div className={`border p-5 ${tot.revGap<0?"border-red-800/60 bg-red-950/20":tot.revGap>0?"border-emerald-800/60 bg-emerald-950/20":"border-slate-800 bg-slate-900"}`}>
+          <p className="text-xs text-slate-400 mb-1">{halfLabel}の売上差異（予測 − 計画）</p>
+          <p className={`text-3xl font-bold leading-none ${tot.revGap<0?"text-red-400":tot.revGap>0?"text-emerald-400":"text-slate-200"}`}>
+            {tot.revGap>0?"+":""}{tot.revGap.toLocaleString()}<span className="text-base font-semibold ml-1">万円</span>
+          </p>
         </div>
       </div>
+      <p className="text-[11px] text-slate-500">※ コストと売上は性質が異なるため合算していません。いずれも発売日のズレで各期に移動した分で、商品トータルでは増減しません。</p>
 
       <div className="grid grid-cols-4 gap-4">
         <StatCard label={`${halfLabel}累計コスト（計画）`} value={`${tot.planCost.toLocaleString()}万円`} valueClass="text-slate-200"/>
