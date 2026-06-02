@@ -20,7 +20,7 @@ function CostTab({costData,delayMonths}) {
       <div className="bg-slate-900 rounded-none border border-slate-800 p-6">
         <p className="text-sm font-semibold text-slate-300 mb-4">計画 vs 予測コスト（月別）</p>
         <BarChartSVG data={active} keys={["baseline","forecast"]}
-          colors={["#ef4444","#10b981"]}
+          colors={["#f59e0b","#3b82f6"]}
           labels={["計画コスト","予測コスト"]} formatter={v=>`${Math.round(v)}万`}/>
       </div>
       {hasGap&&(
@@ -28,8 +28,8 @@ function CostTab({costData,delayMonths}) {
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-semibold text-slate-300">月別コスト差異（予測 − 計画）</p>
             <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>計画コスト</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>予測コスト</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block"/>マイナス差異</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block"/>プラス差異</span>
             </div>
           </div>
           <p className="text-xs text-slate-500 mb-4">マイナス＝計画月にコストが未発生（後のタスクにシフト）　プラス＝当初計画より追加でコスト発生</p>
@@ -84,7 +84,7 @@ function SalesTab({salesData,totalLoss,delayMonths,project}) {
       <div className="bg-slate-900 rounded-none border border-slate-800 p-6">
         <h3 className="text-sm font-semibold text-slate-300 mb-4">累積売上比較（計画 vs 予測）</h3>
         <LineChartSVG data={salesData} keys={["cumBase","cumForecast"]}
-          colors={["#10b981","#6366f1"]} labels={["累積売上（計画）","累積売上（予測）"]}
+          colors={["#f59e0b","#6366f1"]} labels={["累積売上（計画）","累積売上（予測）"]}
           formatter={v=>`${Math.round(v).toLocaleString()}万`}/>
       </div>
       {hasGap&&(
@@ -92,8 +92,8 @@ function SalesTab({salesData,totalLoss,delayMonths,project}) {
           <div className="flex items-center justify-between mb-1">
             <h3 className="text-sm font-semibold text-slate-300">月別売上差異（予測 − 計画）</h3>
             <div className="flex items-center gap-3 text-xs text-slate-500">
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>マイナス差異</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>プラス差異</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block"/>マイナス差異</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block"/>プラス差異</span>
             </div>
           </div>
           <p className="text-xs text-slate-500 mb-4">
@@ -226,8 +226,8 @@ function FiscalTab({projects}) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-slate-300">月別コスト差異（予測 − 計画）</h3>
           <div className="flex items-center gap-3 text-xs text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>コスト増</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>コスト減</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block"/>マイナス差異</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block"/>プラス差異</span>
           </div>
         </div>
         {hasCostGap ? <GapBarChart data={costGapData} valueKey="gap" height={200}/>
@@ -238,8 +238,8 @@ function FiscalTab({projects}) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold text-slate-300">月別売上差異（予測 − 計画）</h3>
           <div className="flex items-center gap-3 text-xs text-slate-500">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"/>マイナス差異</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"/>プラス差異</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block"/>マイナス差異</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-blue-500 inline-block"/>プラス差異</span>
           </div>
         </div>
         {hasRevGap ? <GapBarChart data={revGapData} valueKey="gap" height={200}/>

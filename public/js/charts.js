@@ -29,7 +29,7 @@ function GapBarChart({data, labelKey="label", valueKey="gap", height=200}) {
           const x=padL+(i/data.length)*innerW+(innerW/data.length-barW)/2;
           return(
             <rect key={i} x={x} y={barY(v)} width={barW} height={Math.max(2,barH(v))}
-              fill={v>=0?"#10b981":"#ef4444"} rx={3}
+              fill={v>=0?"#3b82f6":"#f59e0b"} rx={3}
               onMouseEnter={e=>setTip({x:e.clientX,y:e.clientY,d,i})}
               onMouseLeave={()=>setTip(null)}
               className="cursor-pointer"/>
