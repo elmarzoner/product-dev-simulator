@@ -18,7 +18,7 @@ function ProjectListPanel({projects, selectedId, setSelectedId, setActiveTab,
           <span className="text-sm font-medium truncate">{p.name}</span>
         </div>
         <button
-          onClick={e=>{e.stopPropagation(); setSelectedId(p.id); setActiveTab(5);}}
+          onClick={e=>{e.stopPropagation(); setSelectedId(p.id); setActiveTab(3);}}
           className={`opacity-0 group-hover:opacity-70 hover:opacity-100 ml-2 shrink-0 ${isSelected?"text-indigo-200":"text-slate-300"}`}
           title="設定を開く">
           <IcoEdit s={13}/>
@@ -252,7 +252,7 @@ function OverviewTab({projects, setSelectedId, setActiveTab}) {
                 <td className="px-3 py-3 text-right text-amber-400">{totalCost.toLocaleString()}万</td>
                 <td className="px-3 py-3 text-right text-emerald-300">{totalRev.toLocaleString()}万</td>
                 <td className="px-3 py-3 text-right">
-                  <button onClick={()=>{setSelectedId(p.id); setActiveTab(5);}}
+                  <button onClick={()=>{setSelectedId(p.id); setActiveTab(3);}}
                     className="text-[10px] px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white">設定</button>
                 </td>
               </tr>

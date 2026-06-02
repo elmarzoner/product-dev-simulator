@@ -9,7 +9,7 @@ function App() {
   const [showDataMenu, setShowDataMenu] = useState(false);
 
   useEffect(()=>{ saveProjects(projects); },[projects]);
-  useEffect(()=>{ setEditingTask(null); setActiveTab(t=>t===5?5:t); },[selectedId]);
+  useEffect(()=>{ setEditingTask(null); setActiveTab(t=>t===3?3:t); },[selectedId]);
 
   const project=useMemo(()=>projects.find(p=>p.id===selectedId)||projects[0],[projects,selectedId]);
 
@@ -229,7 +229,7 @@ function App() {
     downloadFile(`pdp_fiscal_${ts()}.csv`, toCSV(headers, rows), "text/csv;charset=utf-8");
   }
 
-  const TABS=["進捗タイムライン","月別コスト推移","売上・インパクト分析","期次サマリー","全プロジェクト一覧","プロジェクト設定"];
+  const TABS=["進捗タイムライン","期次サマリー","全プロジェクト一覧","プロジェクト設定"];
 
   return(
     <div className="min-h-screen bg-slate-950 flex flex-col">
@@ -303,7 +303,7 @@ function App() {
               <MiniStat label="総開発コスト" value={`${project.tasks.reduce((s,t)=>s+t.cost,0).toLocaleString()}万円`}/>
               <MiniStat label="機会損失（累計）" value={totalLoss>0?`-${totalLoss.toLocaleString()}万円`:"なし"} valueClass={totalLoss>0?"text-red-400":"text-emerald-400"}/>
             </div>
-            <button onClick={()=>setActiveTab(5)}
+            <button onClick={()=>setActiveTab(3)}
               className="w-full py-2.5 border border-dashed border-indigo-700 text-indigo-400 hover:bg-indigo-950/40 text-xs font-semibold transition-colors">
               ✎ タスク・売上・プロジェクト設定を編集
             </button>
@@ -321,11 +321,9 @@ function App() {
           </div>
           <div className="flex-1 overflow-auto p-6 bg-slate-950">
             {activeTab===0&&<GanttTab project={project} delayMonths={delayMonths} timelineMonths={timelineMonths} getFcstOffsets={getFcstOffsets} updateProject={updateProject}/>}
-            {activeTab===1&&<CostTab costData={costData} delayMonths={delayMonths}/>}
-            {activeTab===2&&<SalesTab salesData={salesData} totalLoss={totalLoss} delayMonths={delayMonths} project={project}/>}
-            {activeTab===3&&<FiscalTab projects={projects}/>}
-            {activeTab===4&&<OverviewTab projects={projects} setSelectedId={setSelectedId} setActiveTab={setActiveTab}/>}
-            {activeTab===5&&<SettingsTab
+            {activeTab===1&&<FiscalTab projects={projects}/>}
+            {activeTab===2&&<OverviewTab projects={projects} setSelectedId={setSelectedId} setActiveTab={setActiveTab}/>}
+            {activeTab===3&&<SettingsTab
               project={project} updateProject={updateProject}
               deleteProject={()=>deleteProject(project.id)}
               editingTask={editingTask} setEditingTask={setEditingTask} saveTask={saveTask}
