@@ -34,7 +34,32 @@ function FiscalTab({projects}) {
     return arr;
   }, [allMap]);
 
+  // 売上が実在する期のうち最も早い期。発売日を動かすと開発コストは発売前の期に、
+  // 売上は発売後の期に入るため、「売上を確認したい」用途では売上のある期に寄せる。
+  const earliestRevFY = useMemo(() => {
+    let min = null;
+    Object.entries(allMap).forEach(([k, v]) => {
+      if (!(v.planRev || v.fcstRev)) return;
+      const [y, m] = k.split('-').map(Number);
+      const f = fiscalYearOfYM(y, m);
+      if (min === null || f < min) min = f;
+    });
+    return min;
+  }, [allMap]);
+
   const [fy, setFy] = useState(FY_BASE_YEAR);
+  const fyTouched = useRef(false);
+  // ユーザーが手動で期を選ぶ前で、現在の期に売上が無いのに他の期に売上がある場合は、
+  // 売上のある最も早い期へ寄せる（発売日変更で売上が別の期に移動したケースを救済）。
+  useEffect(() => {
+    if (fyTouched.current || earliestRevFY === null) return;
+    const curHasRev = monthsAll.some(({year, month}) => {
+      const v = allMap[`${year}-${String(month).padStart(2,'0')}`];
+      return v && (v.planRev || v.fcstRev);
+    });
+    if (!curHasRev) setFy(earliestRevFY);
+  }, [earliestRevFY, allMap]);
+
   const [half, setHalf] = useState("full");
   const halfLabel = half==="h1" ? "上期" : half==="h2" ? "下期" : "通期";
 
@@ -89,7 +114,7 @@ function FiscalTab({projects}) {
               </button>
             ))}
           </div>
-          <select value={fy} onChange={e=>setFy(Number(e.target.value))}
+          <select value={fy} onChange={e=>{fyTouched.current=true; setFy(Number(e.target.value));}}
             className="bg-slate-800 border border-slate-600 px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
             {availableFYs.map(y => (
               <option key={y} value={y}>第{fyToPeriod(y)}期（{y}年4月〜{y+1}年3月）</option>
